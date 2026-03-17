@@ -557,6 +557,25 @@ const _volCache  = {};
 // KIS API 기본 URL
 const KIS_BASE = 'https://openapi.koreainvestment.com:9443';
 const KIS_MOCK = 'https://openapivts.koreainvestment.com:29443'; // 모의투자
+const KIS_WORKER_BASE = 'https://stock-signal-proxy.cheaheechang.workers.dev';
+
+function buildWorkerProxyUrl(targetUrl){
+  return `${KIS_WORKER_BASE}/proxy?url=${encodeURIComponent(targetUrl)}`;
+}
+
+async function workerProxyFetch(targetUrl, init={}){
+  const finalInit={...init};
+  finalInit.cache='no-store';
+  const res=await fetch(buildWorkerProxyUrl(targetUrl), finalInit);
+  const text=await res.text();
+  let data=null;
+  try{ data=JSON.parse(text); }catch(_){ data=text; }
+  if(!res.ok){
+    const msg=(data&&typeof data==='object'&&(data.msg1||data.error||data.message)) || text || `HTTP ${res.status}`;
+    throw new Error(String(msg));
+  }
+  return data;
+}
 
 // Yahoo Finance TF 매핑
 const YF_INTERVAL = {'60':'60m','D':'1d','W':'1wk','M':'1mo'};
@@ -724,30 +743,14 @@ async function getKisToken(){
   const base=cfg.isMock?KIS_MOCK:KIS_BASE;
   const tokenUrl=`${base}/oauth2/tokenP`;
   const tokenBody=JSON.stringify({grant_type:'client_credentials',appkey:cfg.appKey,appsecret:cfg.appSecret});
-  // content:// 환경 CORS 우회 — 프록시 순차 시도
-  let data=null;
-  const proxies=[
-    u=>u,  // 직접 (웹에서 열 때)
-    u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,
-    u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-  ];
-  let lastErr;
-  for(const proxy of proxies){
-    try{
-      const url=proxy(tokenUrl);
-      const res=await fetch(url,{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:tokenBody,
-      });
-      if(!res.ok) continue;
-      const text=await res.text();
-      try{ data=JSON.parse(text); }catch(_){ try{ data=JSON.parse(JSON.parse(text).contents); }catch(_){} }
-      if(data?.access_token) break;
-      data=null;
-    }catch(e){ lastErr=e; }
-  }
-  if(!data?.access_token) throw new Error(lastErr?.message||data?.msg1||'토큰 발급 실패 — KIS API 연결 오류');
+
+  const data=await workerProxyFetch(tokenUrl,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:tokenBody,
+  });
+
+  if(!data?.access_token) throw new Error(data?.msg1||data?.error||'토큰 발급 실패 — KIS API 연결 오류');
   const exp=Date.now()+6*3600*1000;
   state.kisToken=data.access_token; state.kisTokenExp=exp;
   Store.set('KIS_TOKEN',data.access_token);
@@ -759,8 +762,10 @@ async function kisGet(path, params={}){
   const cfg=getKisConfig();
   const base=cfg.isMock?KIS_MOCK:KIS_BASE;
   const token=await getKisToken();
-  const qs=new URLSearchParams(params).toString();
-  const targetUrl=`${base}${path}?${qs}`;
+  const cleanParams={...params};
+  delete cleanParams.tr_id;
+  const qs=new URLSearchParams(cleanParams).toString();
+  const targetUrl=`${base}${path}${qs?`?${qs}`:''}`;
   const headers={
     'authorization':`Bearer ${token}`,
     'appkey':cfg.appKey,
@@ -768,20 +773,10 @@ async function kisGet(path, params={}){
     'tr_id':params.tr_id||'',
     'Content-Type':'application/json; charset=utf-8',
   };
-  const proxies=[u=>u, u=>`https://corsproxy.io/?${encodeURIComponent(u)}`];
-  let lastErr;
-  for(const proxy of proxies){
-    try{
-      const res=await fetch(proxy(targetUrl),{headers});
-      if(!res.ok) continue;
-      const text=await res.text();
-      let data;
-      try{ data=JSON.parse(text); }catch(_){ try{ data=JSON.parse(JSON.parse(text).contents); }catch(_){ continue; } }
-      if(data.rt_cd&&data.rt_cd!=='0') throw new Error(data.msg1||`KIS 오류 ${data.rt_cd}`);
-      return data;
-    }catch(e){ lastErr=e; }
-  }
-  throw lastErr||new Error('KIS API 연결 실패');
+
+  const data=await workerProxyFetch(targetUrl,{headers});
+  if(data?.rt_cd&&data.rt_cd!=='0') throw new Error(data.msg1||`KIS 오류 ${data.rt_cd}`);
+  return data;
 }
 
 // ── CORS 프록시 (fallback용) ──────────────────────────────
