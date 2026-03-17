@@ -554,28 +554,12 @@ const TP_MULT = 4.8, SL_MULT = 2.0;
 const SCAN_DELAY = 400;
 const _volCache  = {};
 
+// Cloudflare Workers 프록시
+const PROXY_BASE = 'https://stock-signal-proxy.cheaheechang.workers.dev';
+
 // KIS API 기본 URL
 const KIS_BASE = 'https://openapi.koreainvestment.com:9443';
 const KIS_MOCK = 'https://openapivts.koreainvestment.com:29443'; // 모의투자
-const KIS_WORKER_BASE = 'https://stock-signal-proxy.cheaheechang.workers.dev';
-
-function buildWorkerProxyUrl(targetUrl){
-  return `${KIS_WORKER_BASE}/proxy?url=${encodeURIComponent(targetUrl)}`;
-}
-
-async function workerProxyFetch(targetUrl, init={}){
-  const finalInit={...init};
-  finalInit.cache='no-store';
-  const res=await fetch(buildWorkerProxyUrl(targetUrl), finalInit);
-  const text=await res.text();
-  let data=null;
-  try{ data=JSON.parse(text); }catch(_){ data=text; }
-  if(!res.ok){
-    const msg=(data&&typeof data==='object'&&(data.msg1||data.error||data.message)) || text || `HTTP ${res.status}`;
-    throw new Error(String(msg));
-  }
-  return data;
-}
 
 // Yahoo Finance TF 매핑
 const YF_INTERVAL = {'60':'60m','D':'1d','W':'1wk','M':'1mo'};
@@ -740,17 +724,17 @@ async function getKisToken(){
   const cachedExp=Number(Store.get('KIS_TOKEN_EXP')||0);
   if(cached&&Date.now()<cachedExp){ state.kisToken=cached; state.kisTokenExp=cachedExp; return cached; }
 
-  const base=cfg.isMock?KIS_MOCK:KIS_BASE;
-  const tokenUrl=`${base}/oauth2/tokenP`;
+  // Cloudflare Workers 프록시 경유
+  const tokenUrl=`${PROXY_BASE}/kis/oauth2/tokenP`;
   const tokenBody=JSON.stringify({grant_type:'client_credentials',appkey:cfg.appKey,appsecret:cfg.appSecret});
+  const headers={'Content-Type':'application/json'};
+  if(cfg.isMock) headers['x-kis-mock']='1';
 
-  const data=await workerProxyFetch(tokenUrl,{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:tokenBody,
-  });
+  const res=await fetch(tokenUrl,{method:'POST',headers,body:tokenBody});
+  if(!res.ok) throw new Error(`토큰 발급 실패 (${res.status})`);
+  const data=await res.json();
+  if(!data?.access_token) throw new Error(data?.msg1||'토큰 발급 실패 — KIS API 연결 오류');
 
-  if(!data?.access_token) throw new Error(data?.msg1||data?.error||'토큰 발급 실패 — KIS API 연결 오류');
   const exp=Date.now()+6*3600*1000;
   state.kisToken=data.access_token; state.kisTokenExp=exp;
   Store.set('KIS_TOKEN',data.access_token);
@@ -760,12 +744,9 @@ async function getKisToken(){
 
 async function kisGet(path, params={}){
   const cfg=getKisConfig();
-  const base=cfg.isMock?KIS_MOCK:KIS_BASE;
   const token=await getKisToken();
-  const cleanParams={...params};
-  delete cleanParams.tr_id;
-  const qs=new URLSearchParams(cleanParams).toString();
-  const targetUrl=`${base}${path}${qs?`?${qs}`:''}`;
+  const qs=new URLSearchParams(params).toString();
+  const targetUrl=`${PROXY_BASE}/kis${path}?${qs}`;
   const headers={
     'authorization':`Bearer ${token}`,
     'appkey':cfg.appKey,
@@ -773,31 +754,23 @@ async function kisGet(path, params={}){
     'tr_id':params.tr_id||'',
     'Content-Type':'application/json; charset=utf-8',
   };
+  if(cfg.isMock) headers['x-kis-mock']='1';
 
-  const data=await workerProxyFetch(targetUrl,{headers});
-  if(data?.rt_cd&&data.rt_cd!=='0') throw new Error(data.msg1||`KIS 오류 ${data.rt_cd}`);
+  const res=await fetch(targetUrl,{headers});
+  if(!res.ok) throw new Error(`KIS API 오류 (${res.status})`);
+  const data=await res.json();
+  if(data.rt_cd&&data.rt_cd!=='0') throw new Error(data.msg1||`KIS 오류 ${data.rt_cd}`);
   return data;
 }
 
-// ── CORS 프록시 (fallback용) ──────────────────────────────
-const PROXIES = [
-  u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
-  u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
-  u => u,
-];
+// ── CORS 프록시 (Cloudflare Workers) ─────────────────────
 async function fetchJSON(url, ms=13000){
-  let lastErr;
-  for(const p of PROXIES){
-    try{
-      const ctrl=new AbortController(), t=setTimeout(()=>ctrl.abort(),ms);
-      const res=await fetch(p(url),{signal:ctrl.signal,cache:'no-store'});
-      clearTimeout(t); if(!res.ok) continue;
-      const text=await res.text();
-      try{return JSON.parse(text);}catch(_){}
-      try{return JSON.parse(JSON.parse(text).contents);}catch(_){}
-    }catch(e){lastErr=e;}
-  }
-  throw lastErr||new Error('fetch 실패');
+  const proxyUrl=`${PROXY_BASE}/proxy?url=${encodeURIComponent(url)}`;
+  const ctrl=new AbortController(), t=setTimeout(()=>ctrl.abort(),ms);
+  const res=await fetch(proxyUrl,{signal:ctrl.signal,cache:'no-store'});
+  clearTimeout(t);
+  if(!res.ok) throw new Error(`fetch 실패 (${res.status})`);
+  return await res.json();
 }
 
 // ══════════════════════════════════════════════════════════
@@ -902,7 +875,6 @@ async function fetchStockCandles(code, tf, count=200){
 // ── Yahoo Finance 방식 ───────────────────────────────────
 async function fetchStockCandlesYF(code, tf, count=200){
   const ticker=toYFTicker(code);
-  // TF별 폴백: 5분→60분→일봉 순으로 시도
   const tfTry={'60':['60m','1d'],'D':['1d'],'W':['1wk','1d'],'M':['1mo','1wk']};
   const rangeFor={'60m':'60d','1d':'2y','1wk':'5y','1mo':'10y'};
   const intervals=tfTry[tf]||['1d'];
@@ -910,19 +882,14 @@ async function fetchStockCandlesYF(code, tf, count=200){
   for(const interval of intervals){
     try{
       const range=rangeFor[interval]||'2y';
-      const url=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=${interval}&range=${range}`;
-      let raw;
-      for(const proxy of PROXIES){
-        try{
-          const ctrl=new AbortController(),t=setTimeout(()=>ctrl.abort(),15000);
-          const res=await fetch(proxy(url),{signal:ctrl.signal,cache:'no-store'});
-          clearTimeout(t); if(!res.ok) continue;
-          const text=await res.text();
-          try{raw=JSON.parse(text);}catch(_){try{raw=JSON.parse(JSON.parse(text).contents);}catch(_){continue;}}
-          if(raw?.chart?.result?.[0]?.timestamp) break; raw=null;
-        }catch(_){}
-      }
-      if(!raw?.chart?.result?.[0]) continue;
+      const yfUrl=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=${interval}&range=${range}`;
+      const proxyUrl=`${PROXY_BASE}/proxy?url=${encodeURIComponent(yfUrl)}`;
+      const ctrl=new AbortController(),t=setTimeout(()=>ctrl.abort(),15000);
+      const res=await fetch(proxyUrl,{signal:ctrl.signal,cache:'no-store'});
+      clearTimeout(t);
+      if(!res.ok) continue;
+      const raw=await res.json();
+      if(!raw?.chart?.result?.[0]?.timestamp) continue;
       const result=raw.chart.result[0];
       const ts=result.timestamp||[];
       const q=result.indicators?.quote?.[0]||{};
@@ -944,18 +911,13 @@ async function fetchStockCandlesYF(code, tf, count=200){
 
 async function fetchStockTickerYF(code){
   const ticker=toYFTicker(code);
-  const url=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=5d`;
-  let raw;
-  for(const proxy of PROXIES){
-    try{
-      const ctrl=new AbortController(),t=setTimeout(()=>ctrl.abort(),10000);
-      const res=await fetch(proxy(url),{signal:ctrl.signal,cache:'no-store'});
-      clearTimeout(t); if(!res.ok) continue;
-      const text=await res.text();
-      try{raw=JSON.parse(text);}catch(_){try{raw=JSON.parse(JSON.parse(text).contents);}catch(_){continue;}}
-      if(raw?.chart?.result) break; raw=null;
-    }catch(_){}
-  }
+  const yfUrl=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=5d`;
+  const proxyUrl=`${PROXY_BASE}/proxy?url=${encodeURIComponent(yfUrl)}`;
+  const ctrl=new AbortController(),t=setTimeout(()=>ctrl.abort(),10000);
+  const res=await fetch(proxyUrl,{signal:ctrl.signal,cache:'no-store'});
+  clearTimeout(t);
+  if(!res.ok) throw new Error('현재가 조회 실패');
+  const raw=await res.json();
   const result=raw?.chart?.result?.[0];
   if(!result) throw new Error('현재가 조회 실패');
   const closes=result.indicators?.quote?.[0]?.close||[];
