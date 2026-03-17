@@ -271,8 +271,6 @@ input,select{font-size:16px !important;} /* iOS 줌인 방지 */
     <input class="setup-input" id="kisAppKey" type="password" placeholder="발급받은 앱키 입력" autocomplete="off" />
     <div class="setup-label">앱 시크릿 (App Secret)</div>
     <input class="setup-input" id="kisAppSecret" type="password" placeholder="발급받은 앱 시크릿 입력" autocomplete="off" />
-    <div class="setup-label">계좌번호 (선택)</div>
-    <input class="setup-input" id="kisAccount" type="text" placeholder="12345678-01 (조회 전용, 미입력 가능)" autocomplete="off" />
     <button class="setup-btn test" onclick="testKisConnection()">🔌 연결 테스트</button>
     <div class="setup-status" id="setupStatus"></div>
     <button class="setup-btn" onclick="saveSetup()">저장하고 시작</button>
@@ -368,47 +366,55 @@ input,select{font-size:16px !important;} /* iOS 줌인 방지 */
               autocomplete="off" autocorrect="off" spellcheck="false"
               oninput="onStockInput()" onkeydown="onStockKey(event)" />
           </div>
-          <button onclick="toggleUniverseDd()"
-            style="background:var(--surface2);border:1px solid var(--border);color:var(--orange);
-                   padding:0 12px;border-radius:8px;font-size:14px;cursor:pointer;flex-shrink:0;
-                   font-family:var(--mono);" title="전체 종목 보기">▼</button>
+          <button onclick="vibrate();toggleUniverseDd()"
+            style="background:var(--orange);border:1px solid var(--orange);color:#fff;
+                   padding:0 14px;border-radius:8px;font-size:13px;cursor:pointer;flex-shrink:0;
+                   font-family:var(--mono);font-weight:700;" title="조건으로 종목 탐색">▼ 탐색</button>
         </div>
         <div class="dd" id="stockDd"></div>
       </div>
-      <!-- 시장별 필터 -->
+      <!-- 시장 필터 -->
       <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin:8px 0 4px;letter-spacing:1px;">시장</div>
       <div class="chips" id="mktChips">
         <div class="chip active" data-val="all">전체</div>
-        <div class="chip" data-val="kospi200">코스피200</div>
-        <div class="chip" data-val="kosdaq100">코스닥100</div>
+        <div class="chip" data-val="kospi">코스피</div>
+        <div class="chip" data-val="kosdaq">코스닥</div>
         <div class="chip" data-val="etf">ETF</div>
       </div>
-      <!-- 시총 구간 필터 -->
+      <!-- 시총 구간 -->
       <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin:8px 0 4px;letter-spacing:1px;">시총 순위</div>
-      <div class="chips" id="capChips">
+      <div class="chips" id="capChips" style="flex-wrap:wrap;">
         <div class="chip active" data-val="0">1~200</div>
         <div class="chip" data-val="200">201~400</div>
         <div class="chip" data-val="400">401~600</div>
         <div class="chip" data-val="600">601~800</div>
+        <div class="chip" data-val="800">801~1000</div>
+        <div class="chip" data-val="1000">1001~1200</div>
+        <div class="chip" data-val="1200">1201~1400</div>
+        <div class="chip" data-val="1400">1401~1600</div>
       </div>
-      <div style="display:flex;gap:6px;margin-bottom:8px">
-        <button class="btn ghost" style="flex:1;font-size:11px;padding:8px;" id="btnLoadUni" onclick="vibrate();loadUniverseByFilter()">
-          📥 종목 불러오기
-        </button>
-        <span id="uniCount" style="font-family:var(--mono);font-size:11px;color:var(--muted);align-self:center;min-width:50px;text-align:right;"></span>
+      <div id="uniCount" style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:6px;min-height:14px;"></div>
+      <!-- 파생상품 제외 토글 -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer;" onclick="toggleDerivatives()">
+        <div id="derivToggle" style="width:36px;height:20px;border-radius:10px;background:var(--muted);position:relative;transition:all .2s;">
+          <div id="derivKnob" style="width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:all .2s;"></div>
+        </div>
+        <span style="font-family:var(--mono);font-size:11px;color:var(--muted);" id="derivLabel">파생상품 제외</span>
       </div>
+      <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin:4px 0 4px;letter-spacing:1px;">타임프레임</div>
       <div class="chips" id="tfChips" style="margin-bottom:10px">
-        <div class="chip active" data-val="60">60분</div>
-        <div class="chip" data-val="D">일봉</div>
-        <div class="chip" data-val="W">주봉</div>
-        <div class="chip" data-val="M">월봉</div>
+        <div class="chip active" data-val="60" style="border-color:var(--green);color:var(--green);">60분</div>
+        <div class="chip" data-val="D" style="border-color:var(--orange);color:var(--orange);">일봉</div>
+        <div class="chip" data-val="W" style="border-color:var(--orange);color:var(--orange);">주봉</div>
+        <div class="chip" data-val="M" style="border-color:var(--orange);color:var(--orange);">월봉</div>
       </div>
+      <div id="tfSourceHint" style="font-family:var(--mono);font-size:10px;color:var(--green);margin:-6px 0 8px;">60분봉 → Yahoo Finance (데이터 충분)</div>
       <div style="display:flex;gap:8px">
-        <button class="btn" id="btnAnalyze" style="flex:1" onclick="vibrate();state.useYF=false;runAnalyze()">분석 (KIS)</button>
-        <button id="btnAnalyzeYF" onclick="vibrate();state.useYF=true;runAnalyzeYF()"
+        <button class="btn" id="btnAnalyze" style="flex:1" onclick="vibrate();runSmartAnalyze()">📊 분석</button>
+        <button id="btnAnalyzeYF" onclick="vibrate();runSmartAnalyze('yf')"
           style="flex:1;background:transparent;border:1px solid var(--border);color:var(--green);
                  border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;padding:12px;
-                 font-family:inherit;">Yahoo Finance</button>
+                 font-family:inherit;">Yahoo 강제</button>
       </div>
     </div>
 
@@ -506,9 +512,7 @@ input,select{font-size:16px !important;} /* iOS 줌인 방지 */
       <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">앱키 (App Key)</div>
       <input id="settingsAppKey" type="password" placeholder="앱키" style="margin-bottom:8px;" />
       <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">앱 시크릿 (App Secret)</div>
-      <input id="settingsAppSecret" type="password" placeholder="앱 시크릿" style="margin-bottom:8px;" />
-      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">계좌번호 (선택)</div>
-      <input id="settingsAccount" type="text" placeholder="12345678-01" style="margin-bottom:12px;" />
+      <input id="settingsAppSecret" type="password" placeholder="앱 시크릿" style="margin-bottom:12px;" />
       <button class="btn" style="margin-bottom:8px;" onclick="saveSettingsKeys()">저장</button>
       <button class="btn ghost" onclick="testKisConnectionSettings()">연결 테스트</button>
       <div id="settingsTestStatus" style="font-family:var(--mono);font-size:11px;text-align:center;margin-top:8px;min-height:16px;"></div>
@@ -593,8 +597,8 @@ const TF_HOURS   = { 'D':24, 'W':168, 'M':720, '60':1, '30':0.5, '15':0.25 };
 
 // ── 상태 ──────────────────────────────────────────────────
 const state = {
-  mode:       'domestic', // domestic | overseas
-  useYF:      false,       // Yahoo Finance 방식 여부
+  mode:       'domestic',
+  useYF:      false,
   scanRange:  10,
   scanTf:     '60',
   scanFilter: 'all',
@@ -602,10 +606,77 @@ const state = {
   riskResult: null,
   kisToken:   null,
   kisTokenExp: 0,
-  showETF:    true,        // ETF 표시 여부
-  mktFilter:  'all',       // 시장 필터: all, kospi200, kosdaq100, etf
-  capOffset:  0,           // 시총 구간 오프셋: 0, 200, 400, 600
+  showETF:    true,
+  mktFilter:  'all',
+  capOffset:  0,
+  excludeDerivatives: true,
 };
+
+// ── 캔들 데이터 캐시 (API 절약) ─────────────────────────
+const _candleCache = {};
+const CANDLE_CACHE_TTL = 5*60*1000;
+function getCachedCandles(key){
+  const c=_candleCache[key];
+  if(c && Date.now()-c.ts < CANDLE_CACHE_TTL) return c.data;
+  return null;
+}
+function setCachedCandles(key, data){ _candleCache[key]={data, ts:Date.now()}; }
+
+// ── 파생상품 판단 ────────────────────────────────────────
+function isDerivative(stock){
+  if(!stock) return false;
+  const name=(stock.name||'').toUpperCase();
+  const patterns=[/ETN/,/선물/,/인버스/,/레버리지/,/2X/,/3X/,/BEAR/,/BULL/,/SHORT/,/ULTRA/,/합성/,/파생/,/스왑/];
+  return patterns.some(p=>p.test(name));
+}
+function toggleDerivatives(){
+  state.excludeDerivatives=!state.excludeDerivatives;
+  const tog=document.getElementById('derivToggle');
+  const knob=document.getElementById('derivKnob');
+  const label=document.getElementById('derivLabel');
+  if(state.excludeDerivatives){
+    tog.style.background='var(--orange)';
+    knob.style.left='18px';
+    label.textContent='파생상품 제외';
+    label.style.color='var(--orange)';
+  }else{
+    tog.style.background='var(--muted)';
+    knob.style.left='2px';
+    label.textContent='파생상품 포함';
+    label.style.color='var(--muted)';
+  }
+}
+
+// ── TF별 자동 소스 결정 ──────────────────────────────────
+function getAutoSource(tf){
+  if(state.mode==='overseas') return 'yf';
+  if(tf==='60') return 'yf';
+  return 'kis';
+}
+function updateTfSourceHint(){
+  const hint=document.getElementById('tfSourceHint');
+  if(!hint) return;
+  const src=getAutoSource(state.analyzeTf);
+  if(src==='yf'){
+    hint.style.color='var(--green)';
+    hint.textContent=state.analyzeTf==='60'?'60분봉 → Yahoo Finance (데이터 충분)':'해외 → Yahoo Finance';
+  }else{
+    hint.style.color='var(--orange)';
+    hint.textContent=({'D':'일봉','W':'주봉','M':'월봉'}[state.analyzeTf]||state.analyzeTf)+' → KIS API (원본 데이터)';
+  }
+}
+
+// ── 스마트 분석 (자동 소스 전환) ─────────────────────────
+function runSmartAnalyze(forceSource){
+  const src=forceSource||getAutoSource(state.analyzeTf);
+  if(src==='yf'){
+    state.useYF=true;
+    runAnalyzeYF();
+  }else{
+    state.useYF=false;
+    runAnalyze();
+  }
+}
 
 // ── 유틸 ──────────────────────────────────────────────────
 const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
@@ -685,8 +756,9 @@ initChips('tfChips',     v=>{
   document.querySelectorAll('#recTfChips .chip').forEach(c=>{
     c.classList.toggle('active', c.dataset.val===v);
   });
+  updateTfSourceHint();
 });
-initChips('mktChips',    v=>{ state.mktFilter=v; updateCapChipsForMode(); });
+initChips('mktChips',    v=>{ state.mktFilter=v; });
 initChips('capChips',    v=>{ state.capOffset=Number(v); });
 
 // ── 시장 모드 ─────────────────────────────────────────────
@@ -727,7 +799,15 @@ function updateTfChipsForMode(){
       document.querySelector('#tfChips .chip[data-val="D"]')?.classList.add('active');
       state.analyzeTf = 'D';
     }
+    // 해외: 전체 녹색 / 국내: 60분 녹색, 나머지 주황
+    if(!isDomestic){
+      chip.style.borderColor='var(--green)';chip.style.color='var(--green)';
+    }else{
+      chip.style.borderColor=isIntraday?'var(--green)':'var(--orange)';
+      chip.style.color=isIntraday?'var(--green)':'var(--orange)';
+    }
   });
+  updateTfSourceHint();
 }
 
 // ══════════════════════════════════════════════════════════
@@ -763,8 +843,8 @@ function updateCapChipsForMode(){
   } else {
     mktChips.innerHTML=`
       <div class="chip active" data-val="all">전체</div>
-      <div class="chip" data-val="kospi200">코스피200</div>
-      <div class="chip" data-val="kosdaq100">코스닥100</div>
+      <div class="chip" data-val="kospi">코스피</div>
+      <div class="chip" data-val="kosdaq">코스닥</div>
       <div class="chip" data-val="etf">ETF</div>`;
   }
   state.mktFilter='all';
@@ -814,18 +894,17 @@ async function loadUniverseByFilter(){
 
 // ── 국내: KIS 시총순 종목 ────────────────────────────────
 async function loadDomesticByFilter(mktFilter, offset){
-  // 시장 코드 결정
-  let mktCode='J'; // J=전체, P=코스피, Q=코스닥
-  if(mktFilter==='kospi200') mktCode='J';
-  if(mktFilter==='kosdaq100') mktCode='Q';
-  if(mktFilter==='etf') mktCode='J'; // ETF는 별도 처리
+  // 시장 코드: J=코스피, Q=코스닥
+  let mktCode='J';
+  if(mktFilter==='kosdaq') mktCode='Q';
+  if(mktFilter==='etf') mktCode='J';
 
   const results=[];
 
   if(mktFilter==='etf'){
     // ETF 거래대금 상위
     try{
-      const data=await kisGet('/uapi/domestic-stock/v1/quotations/volume-rank',{
+      const data=await kisGet('/uapi/domestic-stock/v1/ranking/market-cap',{
         tr_id:'FHPST01710000',
         FID_COND_MRKT_DIV_CODE:'J',
         FID_COND_SCR_DIV_CODE:'20171',
@@ -839,7 +918,7 @@ async function loadDomesticByFilter(mktFilter, offset){
         FID_VOL_CNT:'',
         FID_INPUT_DATE_1:'',
       });
-      (data.output||[]).forEach(s=>{
+      (data.output||[]).slice(offset, offset+200).forEach(s=>{
         if(s.mksc_shrn_iscd) results.push({
           code:s.mksc_shrn_iscd,
           name:s.hts_kor_isnm||s.mksc_shrn_iscd,
@@ -848,45 +927,53 @@ async function loadDomesticByFilter(mktFilter, offset){
         });
       });
     }catch(_){}
-    // ETF fallback 없으면 하드코딩
     if(results.length===0) return getDomesticFallback().filter(s=>isETF(s));
     return results;
   }
 
-  // 시총순 종목 (코스피/코스닥)
+  // 코스피/코스닥/전체 시총순
   try{
-    const data=await kisGet('/uapi/domestic-stock/v1/ranking/market-cap',{
-      tr_id:'FHPST01710000',
-      FID_COND_MRKT_DIV_CODE:mktCode,
-      FID_COND_SCR_DIV_CODE:'20171',
-      FID_INPUT_ISCD:'0000',
-      FID_DIV_CLS_CODE:'0',
-      FID_BLNG_CLS_CODE:'0',
-      FID_TRGT_CLS_CODE:'111111111',
-      FID_TRGT_EXLS_CLS_CODE:'000000',
-      FID_INPUT_PRICE_1:'',
-      FID_INPUT_PRICE_2:'',
-      FID_VOL_CNT:'',
-      FID_INPUT_DATE_1:'',
-    });
-    const output=data.output||[];
-    // 시총 구간 적용
-    const sliced=output.slice(offset, offset+200);
-    sliced.forEach(s=>{
-      if(s.mksc_shrn_iscd) results.push({
-        code:s.mksc_shrn_iscd,
-        name:s.hts_kor_isnm||s.mksc_shrn_iscd,
-        market:s.rprs_mrkt_kor_name||(mktCode==='Q'?'KOSDAQ':'KOSPI'),
-        vol24h:Number(s.acml_tr_pbmn||0),
+    // 전체(all)인 경우: 코스피 + 코스닥 합산
+    const markets = mktFilter==='all' ? ['J','Q'] : [mktCode];
+    for(const mc of markets){
+      const data=await kisGet('/uapi/domestic-stock/v1/ranking/market-cap',{
+        tr_id:'FHPST01710000',
+        FID_COND_MRKT_DIV_CODE:mc,
+        FID_COND_SCR_DIV_CODE:'20171',
+        FID_INPUT_ISCD:'0000',
+        FID_DIV_CLS_CODE:'0',
+        FID_BLNG_CLS_CODE:'0',
+        FID_TRGT_CLS_CODE:'111111111',
+        FID_TRGT_EXLS_CLS_CODE:'000000',
+        FID_INPUT_PRICE_1:'',
+        FID_INPUT_PRICE_2:'',
+        FID_VOL_CNT:'',
+        FID_INPUT_DATE_1:'',
       });
-    });
+      const output=data.output||[];
+      const sliced = mktFilter==='all' ? output : output.slice(offset, offset+200);
+      sliced.forEach(s=>{
+        if(s.mksc_shrn_iscd) results.push({
+          code:s.mksc_shrn_iscd,
+          name:s.hts_kor_isnm||s.mksc_shrn_iscd,
+          market:mc==='Q'?'KOSDAQ':'KOSPI',
+          vol24h:Number(s.acml_tr_pbmn||0),
+        });
+      });
+      if(mktFilter!=='all') break;
+    }
+    // 전체 모드: 합산 후 시총순 정렬 → offset 적용
+    if(mktFilter==='all'){
+      results.sort((a,b)=>(b.vol24h||0)-(a.vol24h||0));
+      return results.slice(offset, offset+200);
+    }
   }catch(_){}
 
   // fallback
   if(results.length===0){
     const fb=getDomesticFallback();
-    if(mktFilter==='kospi200') return fb.filter(s=>s.market==='KOSPI');
-    if(mktFilter==='kosdaq100') return fb.filter(s=>s.market==='KOSDAQ');
+    if(mktFilter==='kospi') return fb.filter(s=>s.market==='KOSPI');
+    if(mktFilter==='kosdaq') return fb.filter(s=>s.market==='KOSDAQ');
     return fb;
   }
   return results;
@@ -894,7 +981,8 @@ async function loadDomesticByFilter(mktFilter, offset){
 
 // ── 해외: S&P500 / 나스닥100 / ETF ──────────────────────
 async function loadOverseasByFilter(mktFilter){
-  // KIS 해외 종목 조건검색은 복잡하므로 확장 하드코딩 + API 조합
+  // 해외는 KIS API 종목리스트가 제한적이므로 확장 하드코딩 사용
+  // 단, 종목 수를 대폭 확장 (S&P50 + NDX25 + ETF20 = ~95개)
   const all=getOverseasExtended();
   if(mktFilter==='sp500') return all.filter(s=>s.index==='SP500');
   if(mktFilter==='nasdaq100') return all.filter(s=>s.index==='NDX100');
@@ -1166,12 +1254,22 @@ async function fetchOverseasCandles(code, tf, count=200){
 
 // ── KIS API 방식 (원래 방식) ─────────────────────────────
 async function fetchStockCandles(code, tf, count=200){
-  if(state.mode==='domestic') return await fetchDomesticCandles(code, tf, count);
-  else return await fetchOverseasCandles(code, tf, count);
+  const cacheKey=`kis_${code}_${tf}`;
+  const cached=getCachedCandles(cacheKey);
+  if(cached) return cached.slice(-count);
+  let rows;
+  if(state.mode==='domestic') rows=await fetchDomesticCandles(code, tf, count);
+  else rows=await fetchOverseasCandles(code, tf, count);
+  setCachedCandles(cacheKey, rows);
+  return rows;
 }
 
 // ── Yahoo Finance 방식 ───────────────────────────────────
 async function fetchStockCandlesYF(code, tf, count=200){
+  const cacheKey=`yf_${code}_${tf}`;
+  const cached=getCachedCandles(cacheKey);
+  if(cached) return cached.slice(-count);
+
   const ticker=toYFTicker(code);
   const tfTry={'60':['60m','1d'],'D':['1d'],'W':['1wk','1d'],'M':['1mo','1wk']};
   const rangeFor={'60m':'60d','1d':'2y','1wk':'5y','1mo':'10y'};
@@ -1203,6 +1301,7 @@ async function fetchStockCandlesYF(code, tf, count=200){
     }catch(e){ lastErr=e; }
   }
   if(!rows) throw new Error(lastErr?.message||'Yahoo Finance 데이터 없음');
+  setCachedCandles(cacheKey, rows);
   return rows;
 }
 
@@ -1250,6 +1349,45 @@ async function fetchStockTicker(code){
     const price=Number(o.last||0);
     return {price,change:Number(o.rate||0),high24h:Number(o.high||price),low24h:Number(o.low||price),name:o.rsym||code};
   }
+}
+
+// ── 외국인/기관 수급 조회 (당일) ─────────────────────────
+async function fetchInvestorFlow(code){
+  try{
+    const cfg=getKisConfig();
+    if(!cfg.appKey || state.mode!=='domestic') return null;
+    const today=new Date();
+    const fmt=d=>`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+    const data=await kisGet('/uapi/domestic-stock/v1/quotations/inquire-investor',{
+      tr_id:'FHKST01010900',
+      FID_COND_MRKT_DIV_CODE:'J',
+      FID_INPUT_ISCD:code,
+      FID_INPUT_DATE_1:fmt(today),
+      FID_INPUT_DATE_2:fmt(today),
+    });
+    const rows=data.output||[];
+    if(!rows.length) return null;
+    const r=rows[0];
+    // 외국인 순매수(양수=매수), 기관 순매수
+    const foreign=Number(r.frgn_ntby_qty||0);
+    const inst=Number(r.orgn_ntby_qty||0);
+    return {foreign, inst, foreignAmt:Number(r.frgn_ntby_tr_pbmn||0), instAmt:Number(r.orgn_ntby_tr_pbmn||0)};
+  }catch(_){ return null; }
+}
+
+// ── 장 시간대 보정 계수 ─────────────────────────────────
+function getTimeBoost(){
+  if(state.mode!=='domestic') return 0;
+  const now=new Date();
+  const kst=new Date(now.toLocaleString('en-US',{timeZone:'Asia/Seoul'}));
+  const h=kst.getHours(), m=kst.getMinutes();
+  const totalMin=h*60+m;
+  // 개장 30분 (9:00~9:30) — 변동성 높음, 신호 할인
+  if(totalMin>=540 && totalMin<570) return -5;
+  // 마감 30분 (15:00~15:30) — 변동성 높음, 신호 할인
+  if(totalMin>=900 && totalMin<930) return -3;
+  // 장중 안정 시간 (10:00~14:30) — 보너스 없음
+  return 0;
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1565,12 +1703,15 @@ async function runScanUI(){
     let universe=getFilteredUniverse();
     if(!universe.length){ await autoLoadUniverse(); universe=getFilteredUniverse(); }
     if(!universe.length){ universe=state.mode==='domestic'?getDomesticFallback():getOverseasFallback(); }
+    if(state.excludeDerivatives) universe=universe.filter(s=>!isDerivative(s));
     const stocks=universe.slice(0,state.scanRange);
 
     const results=[]; let done=0;
     for(const s of stocks){
       try{
-        const rows=await fetchStockCandles(s.code, state.scanTf, state.scanTf==='W'?300:state.scanTf==='M'?300:200);
+        const rows=await (getAutoSource(state.scanTf)==='yf'
+          ? fetchStockCandlesYF(s.code, state.scanTf, state.scanTf==='W'?300:state.scanTf==='M'?300:200)
+          : fetchStockCandles(s.code, state.scanTf, state.scanTf==='W'?300:state.scanTf==='M'?300:200));
         const scan=quickScore(rows);
         results.push({code:s.code, name:s.name, market:s.market, ...scan});
       }catch(_){}
@@ -1614,6 +1755,7 @@ async function runScanUIYF(){
     let universe=getFilteredUniverse();
     if(!universe.length){ await autoLoadUniverse(); universe=getFilteredUniverse(); }
     if(!universe.length){ universe=state.mode==='domestic'?getDomesticFallback():getOverseasFallback(); }
+    if(state.excludeDerivatives) universe=universe.filter(s=>!isDerivative(s));
     const stocks=universe.slice(0,state.scanRange);
 
     const results=[]; let done=0;
@@ -1710,20 +1852,73 @@ let _univDdOpen = false;
 let _univDdPage = 0;
 const UNIV_PAGE_SIZE = 50;
 
-function toggleUniverseDd(){
+let _ddLoading=false;
+async function toggleUniverseDd(){
   const dd = document.getElementById('stockDd');
   if(_univDdOpen){
     dd.style.display='none'; _univDdOpen=false; _univDdPage=0;
     return;
   }
-  const uni = getFilteredUniverse();
+  if(_ddLoading) return;
+
+  // KIS 키가 있으면 API로 실시간 로딩
+  const cfg=getKisConfig();
+  if(cfg.appKey && state.mode==='domestic'){
+    _ddLoading=true;
+    dd.innerHTML=`<div style="padding:20px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--muted);">
+      <div style="display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:scan .7s linear infinite;vertical-align:middle;margin-right:6px;"></div>
+      ${state.mktFilter==='etf'?'ETF':state.mktFilter==='kospi'?'코스피':state.mktFilter==='kosdaq'?'코스닥':'전체'} 시총 ${state.capOffset+1}~${state.capOffset+200}위 로딩 중...</div>`;
+    dd.style.display='block';
+    try{
+      await getKisToken();
+      const stocks=await loadDomesticByFilter(state.mktFilter, state.capOffset);
+      if(stocks.length>0){
+        // universe에 병합
+        const existing=loadUniverse();
+        const codeSet=new Set(existing.map(s=>s.code));
+        const merged=[...existing, ...stocks.filter(s=>!codeSet.has(s.code))];
+        const key='STOCK_UNIVERSE_DOM';
+        Store.set(key, JSON.stringify(merged));
+        Store.set(key+'_TS', String(Date.now()));
+        // 파생상품 필터 적용
+        const filtered = state.excludeDerivatives ? stocks.filter(s=>!isDerivative(s)) : stocks;
+        _univDdPage=0; _univDdOpen=true;
+        renderUniverseDd(filtered);
+        document.getElementById('uniCount').textContent=`${filtered.length}개 로드${state.excludeDerivatives?' (파생 제외)':''}`;
+      } else {
+        dd.innerHTML=`<div style="padding:16px;text-align:center;font-size:12px;color:var(--muted);">종목을 불러오지 못했습니다</div>`;
+      }
+    }catch(e){
+      dd.innerHTML=`<div style="padding:16px;text-align:center;font-size:12px;color:var(--red);">오류: ${e.message}</div>`;
+    }
+    _ddLoading=false;
+    return;
+  }
+
+  // 해외 또는 KIS 키 없을 때: 기존 universe 사용
+  const uni = state.mode==='overseas'?getOverseasByFilter():getFilteredUniverse();
   if(!uni.length){
-    toast('종목 리스트 로딩 중... 잠시 후 다시 시도해주세요');
-    autoLoadUniverse(true).then(()=>{ if(loadUniverse().length>0) toast(`✅ ${loadUniverse().length}개 로드 완료`); });
+    // fallback 로드
+    const fb=state.mode==='overseas'?getOverseasExtended():getDomesticFallback();
+    if(fb.length>0){
+      _univDdPage=0; _univDdOpen=true;
+      renderUniverseDd(fb);
+      return;
+    }
+    toast('종목 리스트가 없습니다');
     return;
   }
   _univDdPage=0; _univDdOpen=true;
   renderUniverseDd(uni);
+}
+
+// 해외 필터 적용
+function getOverseasByFilter(){
+  const all=getOverseasExtended();
+  if(state.mktFilter==='sp500') return all.filter(s=>s.index==='SP500');
+  if(state.mktFilter==='nasdaq100') return all.filter(s=>s.index==='NDX100');
+  if(state.mktFilter==='etf') return all.filter(s=>s.market==='ETF');
+  return all;
 }
 
 function renderUniverseDd(uni){
@@ -1917,9 +2112,9 @@ async function runAnalyzeYF(){
     if(ind.volPattern.bullish) b+=clamp(ind.volPattern.score,0,10);
     if(ind.volPattern.bearish) b-=clamp(Math.abs(ind.volPattern.score),0,10);
     b=clamp(b,-30,30);
-    const ctxBonus=clamp(anaCtx.bonus,-20,20);
-    const combined=clamp(s+b*0.5+ctxBonus*0.6,0,100);
-    const rawScore=Math.round(clamp(50+50*Math.tanh(((combined-50)/50)*0.95),0,100));
+    const ctxBonus=clamp(anaCtx.bonus,-30,30);
+    const combined=clamp(s+b*0.5+ctxBonus*0.8+supplyBonus+timeBoost,0,100);
+    const rawScore=Math.round(clamp(50+50*Math.tanh(((combined-50)/50)*1.25),0,100));
     const mom=clamp(ind.trend.pct*4.0,-28,28)+clamp(ind.trend.slope*18.0,-18,18);
     const osc=clamp((ind.rsi.val-50)*0.7,-32,32)+clamp(Math.tanh(ind.macd.histPct*0.35)*18,-18,18);
     let action=rawScore>=BUY_TH?'BUY':rawScore<=SELL_TH?'SELL':'HOLD';
@@ -1995,11 +2190,22 @@ async function runAnalyzeYF(){
     // ── UI 렌더링 ──────────────────────────────────────
     loading.style.display='none'; result.style.display='block';
 
+    const analyzeTime=new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+    const srcLabel=state.useYF?'Yahoo':'KIS';
+    const srcColor=state.useYF?'var(--green)':'var(--orange)';
+    const dataWarn=rows.length<50?`<div style="font-size:10px;color:var(--yellow);margin-top:3px;">⚠ 데이터 ${rows.length}봉 — 신뢰도 낮을 수 있음</div>`:'';
+    const extremeWarn=(overrideMsg)?`<div style="background:rgba(255,64,96,.15);border:1px solid var(--red);border-radius:8px;padding:8px 12px;margin-top:6px;font-size:12px;color:var(--red);font-weight:700;">🚨 ${overrideMsg}</div>`:'';
+
     document.getElementById('analyzeBadge').innerHTML=`
       <div class="action-badge ${action}">${action}</div>
       <span style="font-family:var(--mono);font-size:12px;color:${scoreColor};margin-left:8px">점수 ${rawScore}</span>
       <span style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:6px">${stockName} · ${state.analyzeTf}</span>
-      <div style="font-size:11px;color:var(--muted);margin-top:4px">${fmtP(price)} · ${actionKo}</div>`;
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">
+        ${fmtP(price)} · ${actionKo}
+        <span style="color:${srcColor};margin-left:6px;font-family:var(--mono);font-size:10px;">[${srcLabel}]</span>
+        <span style="color:var(--muted);font-family:var(--mono);font-size:10px;margin-left:4px;">${analyzeTime}</span>
+      </div>
+      ${dataWarn}${extremeWarn}`;
 
     document.getElementById('confFill').style.cssText=`width:${conf}%;background:${confColor}`;
     document.getElementById('confText').textContent=`신뢰도 ${conf}% · 점수 ${rawScore}`;
@@ -2109,15 +2315,29 @@ async function runAnalyze(){
   loading.style.display='block'; result.style.display='none';
 
   try{
-    const [rows, ticker]=await Promise.all([
+    const [rows, ticker, investorFlow]=await Promise.all([
       fetchStockCandles(code, state.analyzeTf, (state.analyzeTf==='W'||state.analyzeTf==='M')?300:200),
       fetchStockTicker(code),
+      fetchInvestorFlow(code),
     ]);
     if(rows.length<30) throw new Error('데이터 부족 (최소 30봉 필요)');
 
     const ind=calcAll(rows);
     const volSoft=ATR.soften(ind.atr.pct,`${code}|${state.analyzeTf}`,_volCache);
     anaCtx=ind.context||ContextEngine.analyze(ind);
+
+    // ── 수급 보너스 ──
+    let supplyBonus=0;
+    if(investorFlow){
+      if(investorFlow.foreign>0 && investorFlow.inst>0) supplyBonus=+8; // 외국인+기관 동시 매수
+      else if(investorFlow.foreign>0) supplyBonus=+5; // 외국인 매수
+      else if(investorFlow.inst>0) supplyBonus=+4;    // 기관 매수
+      else if(investorFlow.foreign<0 && investorFlow.inst<0) supplyBonus=-8; // 동시 매도
+      else if(investorFlow.foreign<0) supplyBonus=-5; // 외국인 매도
+      else if(investorFlow.inst<0) supplyBonus=-4;    // 기관 매도
+    }
+    // 장 시간대 보정
+    const timeBoost=getTimeBoost();
 
     // 4-Layer 스코어링 (코인과 동일)
     let s=50;
@@ -2146,9 +2366,9 @@ async function runAnalyze(){
     if(ind.volPattern.bullish) b+=clamp(ind.volPattern.score,0,10);
     if(ind.volPattern.bearish) b-=clamp(Math.abs(ind.volPattern.score),0,10);
     b=clamp(b,-30,30);
-    const ctxBonus=clamp(anaCtx.bonus,-20,20);
-    const combined=clamp(s+b*0.5+ctxBonus*0.6,0,100);
-    const rawScore=Math.round(clamp(50+50*Math.tanh(((combined-50)/50)*0.95),0,100));
+    const ctxBonus=clamp(anaCtx.bonus,-30,30);
+    const combined=clamp(s+b*0.5+ctxBonus*0.8,0,100);
+    const rawScore=Math.round(clamp(50+50*Math.tanh(((combined-50)/50)*1.25),0,100));
     const mom=clamp(ind.trend.pct*4.0,-28,28)+clamp(ind.trend.slope*18.0,-18,18);
     const osc=clamp((ind.rsi.val-50)*0.7,-32,32)+clamp(Math.tanh(ind.macd.histPct*0.35)*18,-18,18);
     let action=rawScore>=BUY_TH?'BUY':rawScore<=SELL_TH?'SELL':'HOLD';
@@ -2224,15 +2444,34 @@ async function runAnalyze(){
     // ── UI 렌더링 ──────────────────────────────────────
     loading.style.display='none'; result.style.display='block';
 
+    const analyzeTime=new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+    const srcLabel=state.useYF?'Yahoo':'KIS';
+    const srcColor=state.useYF?'var(--green)':'var(--orange)';
+    const dataWarn=rows.length<50?`<div style="font-size:10px;color:var(--yellow);margin-top:3px;">⚠ 데이터 ${rows.length}봉 — 신뢰도 낮을 수 있음</div>`:'';
+    const extremeWarn=(overrideMsg)?`<div style="background:rgba(255,64,96,.15);border:1px solid var(--red);border-radius:8px;padding:8px 12px;margin-top:6px;font-size:12px;color:var(--red);font-weight:700;">🚨 ${overrideMsg}</div>`:'';
+
     document.getElementById('analyzeBadge').innerHTML=`
       <div class="action-badge ${action}">${action}</div>
       <span style="font-family:var(--mono);font-size:12px;color:${scoreColor};margin-left:8px">점수 ${rawScore}</span>
       <span style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-left:6px">${stockName} · ${state.analyzeTf}</span>
-      <div style="font-size:11px;color:var(--muted);margin-top:4px">${fmtP(price)} · ${actionKo}</div>`;
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">
+        ${fmtP(price)} · ${actionKo}
+        <span style="color:${srcColor};margin-left:6px;font-family:var(--mono);font-size:10px;">[${srcLabel}]</span>
+        <span style="color:var(--muted);font-family:var(--mono);font-size:10px;margin-left:4px;">${analyzeTime}</span>
+      </div>
+      ${dataWarn}${extremeWarn}`;
 
     document.getElementById('confFill').style.cssText=`width:${conf}%;background:${confColor}`;
     document.getElementById('confText').textContent=`신뢰도 ${conf}% · 점수 ${rawScore}`;
-    document.getElementById('analyzeReasons').textContent=reasons.length?`HOLD 사유: ${reasons.join(', ')}` :'';
+    // 수급 정보 표시
+    const supplyStr=(typeof investorFlow!=='undefined'&&investorFlow)?(() => {
+      const fStr=investorFlow.foreign>0?`<span style="color:var(--orange)">외국인 순매수</span>`
+        :investorFlow.foreign<0?`<span style="color:var(--blue)">외국인 순매도</span>`:'외국인 중립';
+      const iStr=investorFlow.inst>0?`<span style="color:var(--orange)">기관 순매수</span>`
+        :investorFlow.inst<0?`<span style="color:var(--blue)">기관 순매도</span>`:'기관 중립';
+      return `<div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:4px;">📊 ${fStr} · ${iStr}</div>`;
+    })():'';
+    document.getElementById('analyzeReasons').innerHTML=(reasons.length?`HOLD 사유: ${reasons.join(', ')}`:'')+supplyStr;
 
     document.getElementById('analyzeFourway').innerHTML=[
       {label:'추세',val:fw.trend,max:30,c:'var(--orange)'},
@@ -2320,7 +2559,7 @@ async function runMTFManual(){
       addS2(MA.signal(ind.maAlign),4); addS2(BollingerBands.signal(ind.bb.price,ind.bb),3);
       b=clamp(b,-30,30);
       const combined=clamp(s+b*0.5,0,100);
-      const score=Math.round(clamp(50+50*Math.tanh(((combined-50)/50)*0.95),0,100));
+      const score=Math.round(clamp(50+50*Math.tanh(((combined-50)/50)*1.25),0,100));
       const mom=clamp(ind.trend.pct*4.0,-28,28)+clamp(ind.trend.slope*18.0,-18,18);
       const osc=clamp((ind.rsi.val-50)*0.7,-32,32)+clamp(Math.tanh(ind.macd.histPct*0.35)*18,-18,18);
       let action=score>=BUY_TH?'BUY':score<=SELL_TH?'SELL':'HOLD';
@@ -2362,12 +2601,66 @@ async function runMTFManual(){
 // ══════════════════════════════════════════════════════════
 async function fetchMarketMetrics(){
   const cfg=getKisConfig();
-  if(!cfg.appKey) throw new Error('KIS API 키 없음');
+
+  // KIS 키 없거나 해외 Yahoo 모드 → Yahoo 기반 감독관
+  if(!cfg.appKey || (state.mode==='overseas' && state.useYF)){
+    return await fetchMarketMetricsYF();
+  }
 
   if(state.mode==='domestic'){
     return await fetchDomesticMarket();
   } else {
     return await fetchOverseasMarket();
+  }
+}
+
+// ── Yahoo 기반 감독관 (KIS 키 없을 때 / 해외) ──────────
+async function fetchMarketMetricsYF(){
+  try{
+    // 코스피200 ETF(069500) 또는 SPY로 시장 상태 파악
+    const ticker=state.mode==='domestic'?'069500.KS':'SPY';
+    const label=state.mode==='domestic'?'KOSPI200':'S&P500';
+    const url=`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=30d`;
+    const proxyUrl=`${PROXY_BASE}/proxy?url=${encodeURIComponent(url)}`;
+    const res=await fetch(proxyUrl);
+    const raw=await res.json();
+    const result=raw?.chart?.result?.[0];
+    if(!result) throw new Error('Yahoo 시장 데이터 없음');
+    const closes=result.indicators?.quote?.[0]?.close||[];
+    const validCloses=closes.filter(c=>c>0);
+    const last=validCloses[validCloses.length-1]||0;
+    const prev=validCloses[validCloses.length-2]||last;
+    const change=prev?((last-prev)/prev)*100:0;
+
+    // 간이 ATR 계산
+    const highs=result.indicators?.quote?.[0]?.high||[];
+    const lows=result.indicators?.quote?.[0]?.low||[];
+    let atrSum=0,atrCnt=0;
+    for(let i=Math.max(0,validCloses.length-14);i<validCloses.length;i++){
+      if(highs[i]&&lows[i]&&validCloses[i]){
+        atrSum+=((highs[i]-lows[i])/validCloses[i])*100;
+        atrCnt++;
+      }
+    }
+    const idxAtrPct=atrCnt?atrSum/atrCnt:0;
+
+    // 간이 breadth (최근 5일 상승일 비율)
+    let upDays=0;
+    for(let i=Math.max(0,validCloses.length-5);i<validCloses.length;i++){
+      if(i>0&&validCloses[i]>validCloses[i-1]) upDays++;
+    }
+    const breadth=validCloses.length>=5?upDays/5:0.5;
+
+    return {
+      type:state.mode==='domestic'?'domestic':'overseas',
+      kospiChange:state.mode==='domestic'?change:0,
+      kosdaqChange:0,
+      idxAtrPct, breadth, totalVol:0, volDelta:1.0,
+      indexName:label, indexChange:change,
+      source:'yahoo',
+    };
+  }catch(e){
+    throw new Error(`Yahoo 시장 분석 오류: ${e.message}`);
   }
 }
 
@@ -2665,9 +2958,8 @@ function buildSummary(ana,sup,action,score,name,riskLvl){
 }
 
 // ── 스코어링 (추천기용) ────────────────────────────────────
-function quickScore(rows){
-  const ind=calcAll(rows);
-  const volSoft=ATR.soften(ind.atr.pct,`scan_${rows[0]?.t||'x'}`,_volCache);
+// ── 공통 스코어링 엔진 (중복 제거) ───────────────────────
+function computeScore(ind, volSoft, ctxBonus){
   let s=50;
   s+=clamp(ind.trend.pct*4.0,-28,28);
   s+=clamp(ind.trend.slope*18.0,-18,18);
@@ -2694,16 +2986,48 @@ function quickScore(rows){
   if(ind.volPattern.bullish) b+=clamp(ind.volPattern.score,0,10);
   if(ind.volPattern.bearish) b-=clamp(Math.abs(ind.volPattern.score),0,10);
   b=clamp(b,-30,30);
-  const ctx=ind.context||ContextEngine.analyze(ind);
-  const combined=clamp(s+b*0.5+clamp(ctx.bonus,-20,20)*0.6,0,100);
-  const score=Math.round(clamp(50+50*Math.tanh(((combined-50)/50)*0.95),0,100));
+  const combined=clamp(s+b*0.5+clamp(ctxBonus,-30,30)*0.8,0,100);
+  const rawScore=Math.round(clamp(50+50*Math.tanh(((combined-50)/50)*1.25),0,100));
   const mom=clamp(ind.trend.pct*4.0,-28,28)+clamp(ind.trend.slope*18.0,-18,18);
   const osc=clamp((ind.rsi.val-50)*0.7,-32,32)+clamp(Math.tanh(ind.macd.histPct*0.35)*18,-18,18);
-  let action=score>=BUY_TH?'BUY':score<=SELL_TH?'SELL':'HOLD';
+  return {rawScore,mom,osc,fw:{
+    trend:Math.round(clamp(15+clamp(ind.trend.pct*1.2,-10,10)+clamp(ind.trend.slope*120,-10,10),0,30)),
+    momentum:Math.round(clamp(15+(ind.rsi.val<30?clamp((30-ind.rsi.val)*0.4,0,10):ind.rsi.val>70?-clamp((ind.rsi.val-70)*0.4,0,10):0)+clamp(ind.macd.histPct*200,-10,10),0,30)),
+    volRisk:Math.round(clamp((volSoft-1.2)*6,0,20)),
+    ctrRisk:Math.round(clamp(clamp(8+clamp((ind.trend.struct.pos-0.6)*20,0,12),0,20)+(ind.trend.struct.nearResistance?4:0)-(ind.trend.struct.nearSupport?3:0),0,20)),
+  }};
+}
+
+function decideAction(rawScore, mom, osc, volSoft, ind, riskResult){
+  let action=rawScore>=BUY_TH?'BUY':rawScore<=SELL_TH?'SELL':'HOLD';
   if(action==='BUY'&&!(mom>0&&osc>0)) action='HOLD';
-  if(action==='BUY'&&score<BUY_TH+3.5) action='HOLD';
+  const reasons=[];
+  if(action==='BUY'&&rawScore<BUY_TH+3.5)                         {reasons.push('임계값 근접');action='HOLD';}
+  if(action==='BUY'&&ind.trend.struct.nearResistance)              {reasons.push('저항권 근접');action='HOLD';}
+  if(volSoft>=7.0)                                                  {reasons.push('변동성 극단');action='HOLD';}
+  else if(volSoft>=4.8&&action==='BUY'&&rawScore<BUY_TH+8)        {reasons.push('변동성 과다');action='HOLD';}
+  if(action!=='HOLD'&&Math.abs(ind.trend.slope)<=0.035&&Math.abs(ind.trend.pct)<=0.9){reasons.push('추세 불명확');action='HOLD';}
+  let overrideMsg='';
+  if(riskResult&&riskResult.level==='EXTREME'&&action==='BUY'){action='HOLD';overrideMsg='🚨 감독관 제동(EXTREME) — 신규 BUY 차단';}
+  let conf=50;
+  if(action==='BUY')       conf=50+50*clamp((rawScore-60)/40,0,1);
+  else if(action==='SELL') conf=50+50*clamp((40-rawScore)/40,0,1);
+  else                      conf=50+30*clamp(1-Math.abs(rawScore-50)/20,0,1);
+  conf=Math.round(clamp(conf,0,100));
+  if(riskResult?.level==='HIGH') conf=Math.min(conf,60);
+  return {action,reasons,overrideMsg,conf};
+}
+
+function quickScore(rows){
+  const ind=calcAll(rows);
+  const volSoft=ATR.soften(ind.atr.pct,`scan_${rows[0]?.t||'x'}`,_volCache);
+  const ctx=ind.context||ContextEngine.analyze(ind);
+  const {rawScore,mom,osc}=computeScore(ind,volSoft,ctx.bonus);
+  let action=rawScore>=BUY_TH?'BUY':rawScore<=SELL_TH?'SELL':'HOLD';
+  if(action==='BUY'&&!(mom>0&&osc>0)) action='HOLD';
+  if(action==='BUY'&&rawScore<BUY_TH+3.5) action='HOLD';
   if(volSoft>=7.0) action='HOLD';
-  return {score,action,rsiDiv:ind.rsi.div,obvDiv:ind.obv.div,pullback:ind.pullback,candle:ind.candle,squeeze:ind.squeeze?.squeeze||false};
+  return {score:rawScore,action,rsiDiv:ind.rsi.div,obvDiv:ind.obv.div,pullback:ind.pullback,candle:ind.candle,squeeze:ind.squeeze?.squeeze||false};
 }
 
 // ── 분석기 버튼 상태 업데이트 ─────────────────────────────
@@ -2736,8 +3060,9 @@ function initApp(){
   updateTfChipsForMode();
   updateAnalyzeBtn();
   autoLoadUniverse().catch(()=>{});
-  // runRisk 자동 실행 제거 — KIS API 프록시 막힘 방지
-  // 사용자가 감독관 탭에서 직접 버튼으로 실행
+  // 파생상품 토글 초기 상태 (기본 ON = 제외)
+  toggleDerivatives(); toggleDerivatives(); // 2회 호출로 기본값 적용
+  updateTfSourceHint();
 }
 
 window.addEventListener('load', ()=>{ initSetup(); });
@@ -2814,10 +3139,12 @@ const RSI = {
 
   /** 현재값 기준 신호 */
   signal(val) {
-    if (val < 30) return { type: 'buy',  label: 'RSI 과매도', strength: 'strong' };
-    if (val < 45) return { type: 'buy',  label: 'RSI 중립하단', strength: 'weak' };
-    if (val > 70) return { type: 'sell', label: 'RSI 과매수', strength: 'strong' };
-    if (val > 55) return { type: 'sell', label: 'RSI 중립상단', strength: 'weak' };
+    if (val < 25) return { type: 'buy',  label: 'RSI 극과매도', strength: 'strong' };
+    if (val < 35) return { type: 'buy',  label: 'RSI 과매도', strength: 'strong' };
+    if (val < 40) return { type: 'buy',  label: 'RSI 매수권', strength: 'weak' };
+    if (val > 75) return { type: 'sell', label: 'RSI 극과매수', strength: 'strong' };
+    if (val > 65) return { type: 'sell', label: 'RSI 과매수', strength: 'strong' };
+    if (val > 60) return { type: 'sell', label: 'RSI 매도권', strength: 'weak' };
     return       { type: 'neutral', label: 'RSI 중립', strength: 'none' };
   },
 
@@ -3598,7 +3925,7 @@ const ContextEngine = {
       add(+8, 'RSI과매도+OBV상승+저점권', '3중 매수 신호 — 강한 저점 반등 가능성');
     }
 
-    bonus = Utils.clamp(bonus, -20, 20);
+    bonus = Utils.clamp(bonus, -30, 30);
     return { bonus, rules };
   },
 };
