@@ -364,7 +364,7 @@ input,select{font-size:16px !important;} /* iOS 줌인 방지 */
         <div style="display:flex;gap:6px">
           <div style="position:relative;flex:1">
             <input id="stockInput" type="text" value=""
-              placeholder="종목코드 또는 이름 검색 (예: 005930, 삼성전자)"
+              placeholder="종목코드 또는 이름 검색"
               autocomplete="off" autocorrect="off" spellcheck="false"
               oninput="onStockInput()" onkeydown="onStockKey(event)" />
           </div>
@@ -374,6 +374,28 @@ input,select{font-size:16px !important;} /* iOS 줌인 방지 */
                    font-family:var(--mono);" title="전체 종목 보기">▼</button>
         </div>
         <div class="dd" id="stockDd"></div>
+      </div>
+      <!-- 시장별 필터 -->
+      <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin:8px 0 4px;letter-spacing:1px;">시장</div>
+      <div class="chips" id="mktChips">
+        <div class="chip active" data-val="all">전체</div>
+        <div class="chip" data-val="kospi200">코스피200</div>
+        <div class="chip" data-val="kosdaq100">코스닥100</div>
+        <div class="chip" data-val="etf">ETF</div>
+      </div>
+      <!-- 시총 구간 필터 -->
+      <div style="font-size:10px;color:var(--muted);font-family:var(--mono);margin:8px 0 4px;letter-spacing:1px;">시총 순위</div>
+      <div class="chips" id="capChips">
+        <div class="chip active" data-val="0">1~200</div>
+        <div class="chip" data-val="200">201~400</div>
+        <div class="chip" data-val="400">401~600</div>
+        <div class="chip" data-val="600">601~800</div>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <button class="btn ghost" style="flex:1;font-size:11px;padding:8px;" id="btnLoadUni" onclick="vibrate();loadUniverseByFilter()">
+          📥 종목 불러오기
+        </button>
+        <span id="uniCount" style="font-family:var(--mono);font-size:11px;color:var(--muted);align-self:center;min-width:50px;text-align:right;"></span>
       </div>
       <div class="chips" id="tfChips" style="margin-bottom:10px">
         <div class="chip active" data-val="60">60분</div>
@@ -581,6 +603,8 @@ const state = {
   kisToken:   null,
   kisTokenExp: 0,
   showETF:    true,        // ETF 표시 여부
+  mktFilter:  'all',       // 시장 필터: all, kospi200, kosdaq100, etf
+  capOffset:  0,           // 시총 구간 오프셋: 0, 200, 400, 600
 };
 
 // ── 유틸 ──────────────────────────────────────────────────
@@ -662,6 +686,8 @@ initChips('tfChips',     v=>{
     c.classList.toggle('active', c.dataset.val===v);
   });
 });
+initChips('mktChips',    v=>{ state.mktFilter=v; updateCapChipsForMode(); });
+initChips('capChips',    v=>{ state.capOffset=Number(v); });
 
 // ── 시장 모드 ─────────────────────────────────────────────
 function toggleMarketMode(){
@@ -671,6 +697,7 @@ function toggleMarketMode(){
   toast(state.mode==='domestic'?'국내 주식/ETF 모드':'해외 주식/ETF 모드');
   // 해외 모드: 분봉 미지원 → TF 칩 조정 (일봉/주봉만 활성)
   updateTfChipsForMode();
+  updateCapChipsForMode();
   // universe 재로드
   autoLoadUniverse(true);
 }
@@ -706,6 +733,277 @@ function updateTfChipsForMode(){
 // ══════════════════════════════════════════════════════════
 // KIS API — 인증
 // ══════════════════════════════════════════════════════════
+
+// ── 해외 거래소 감지 ─────────────────────────────────────
+function detectExchange(code){
+  const c=code.toUpperCase();
+  // NYSE 대표 종목
+  const nyse=['JPM','V','WMT','XOM','JNJ','PG','UNH','HD','BAC','MA','DIS','VZ','KO','PEP','MRK',
+    'ABT','ABBV','CVX','CRM','CSCO','TMO','AVGO','NKE','LLY','MCD','TXN','DHR','BMY','RTX','NEE',
+    'SPY','GLD','TLT','IWM','SCHD','VOO','VTI','IAU','SLV','GDX','XLE','USO'];
+  if(nyse.includes(c)) return 'NYS';
+  // AMEX
+  const amex=['TQQQ','SQQQ','SOXX','ARKK','USO','UNG','GDXJ'];
+  if(amex.includes(c)) return 'AMS';
+  // 나머지는 NASDAQ
+  return 'NAS';
+}
+
+// ── 시장 모드별 칩 업데이트 ───────────────────────────────
+function updateCapChipsForMode(){
+  const isOverseas = state.mode==='overseas';
+  const mktChips=document.getElementById('mktChips');
+  if(!mktChips)return;
+  if(isOverseas){
+    mktChips.innerHTML=`
+      <div class="chip active" data-val="all">전체</div>
+      <div class="chip" data-val="sp500">S&P 500</div>
+      <div class="chip" data-val="nasdaq100">나스닥 100</div>
+      <div class="chip" data-val="etf">ETF</div>`;
+  } else {
+    mktChips.innerHTML=`
+      <div class="chip active" data-val="all">전체</div>
+      <div class="chip" data-val="kospi200">코스피200</div>
+      <div class="chip" data-val="kosdaq100">코스닥100</div>
+      <div class="chip" data-val="etf">ETF</div>`;
+  }
+  state.mktFilter='all';
+  initChips('mktChips', v=>{ state.mktFilter=v; });
+}
+
+// ── KIS API로 시총순 종목 동적 로딩 ──────────────────────
+async function loadUniverseByFilter(){
+  const btn=document.getElementById('btnLoadUni');
+  const count=document.getElementById('uniCount');
+  btn.disabled=true; btn.textContent='로딩 중...';
+  count.textContent='';
+
+  try{
+    const cfg=getKisConfig();
+    if(!cfg.appKey) throw new Error('KIS 키 필요');
+    await getKisToken();
+
+    let stocks=[];
+    if(state.mode==='domestic'){
+      stocks=await loadDomesticByFilter(state.mktFilter, state.capOffset);
+    } else {
+      stocks=await loadOverseasByFilter(state.mktFilter);
+    }
+
+    if(stocks.length>0){
+      // 기존 universe에 추가 (중복 제거)
+      const existing=loadUniverse();
+      const codeSet=new Set(existing.map(s=>s.code));
+      const merged=[...existing, ...stocks.filter(s=>!codeSet.has(s.code))];
+      const key=state.mode==='domestic'?'STOCK_UNIVERSE_DOM':'STOCK_UNIVERSE_OVS';
+      Store.set(key, JSON.stringify(merged));
+      Store.set(key+'_TS', String(Date.now()));
+      count.textContent=`${merged.length}개 (${stocks.length}개 추가)`;
+      toast(`✅ ${stocks.length}개 종목 로드 완료`);
+    } else {
+      count.textContent='0개';
+      toast('종목을 불러오지 못했습니다');
+    }
+  }catch(e){
+    count.textContent=`오류`;
+    toast(`오류: ${e.message}`);
+  }finally{
+    btn.disabled=false; btn.textContent='📥 종목 불러오기';
+  }
+}
+
+// ── 국내: KIS 시총순 종목 ────────────────────────────────
+async function loadDomesticByFilter(mktFilter, offset){
+  // 시장 코드 결정
+  let mktCode='J'; // J=전체, P=코스피, Q=코스닥
+  if(mktFilter==='kospi200') mktCode='J';
+  if(mktFilter==='kosdaq100') mktCode='Q';
+  if(mktFilter==='etf') mktCode='J'; // ETF는 별도 처리
+
+  const results=[];
+
+  if(mktFilter==='etf'){
+    // ETF 거래대금 상위
+    try{
+      const data=await kisGet('/uapi/domestic-stock/v1/quotations/volume-rank',{
+        tr_id:'FHPST01710000',
+        FID_COND_MRKT_DIV_CODE:'J',
+        FID_COND_SCR_DIV_CODE:'20171',
+        FID_INPUT_ISCD:'0000',
+        FID_DIV_CLS_CODE:'0',
+        FID_BLNG_CLS_CODE:'4', // ETF
+        FID_TRGT_CLS_CODE:'111111111',
+        FID_TRGT_EXLS_CLS_CODE:'000000',
+        FID_INPUT_PRICE_1:'',
+        FID_INPUT_PRICE_2:'',
+        FID_VOL_CNT:'',
+        FID_INPUT_DATE_1:'',
+      });
+      (data.output||[]).forEach(s=>{
+        if(s.mksc_shrn_iscd) results.push({
+          code:s.mksc_shrn_iscd,
+          name:s.hts_kor_isnm||s.mksc_shrn_iscd,
+          market:'ETF',
+          vol24h:Number(s.acml_tr_pbmn||0),
+        });
+      });
+    }catch(_){}
+    // ETF fallback 없으면 하드코딩
+    if(results.length===0) return getDomesticFallback().filter(s=>isETF(s));
+    return results;
+  }
+
+  // 시총순 종목 (코스피/코스닥)
+  try{
+    const data=await kisGet('/uapi/domestic-stock/v1/ranking/market-cap',{
+      tr_id:'FHPST01710000',
+      FID_COND_MRKT_DIV_CODE:mktCode,
+      FID_COND_SCR_DIV_CODE:'20171',
+      FID_INPUT_ISCD:'0000',
+      FID_DIV_CLS_CODE:'0',
+      FID_BLNG_CLS_CODE:'0',
+      FID_TRGT_CLS_CODE:'111111111',
+      FID_TRGT_EXLS_CLS_CODE:'000000',
+      FID_INPUT_PRICE_1:'',
+      FID_INPUT_PRICE_2:'',
+      FID_VOL_CNT:'',
+      FID_INPUT_DATE_1:'',
+    });
+    const output=data.output||[];
+    // 시총 구간 적용
+    const sliced=output.slice(offset, offset+200);
+    sliced.forEach(s=>{
+      if(s.mksc_shrn_iscd) results.push({
+        code:s.mksc_shrn_iscd,
+        name:s.hts_kor_isnm||s.mksc_shrn_iscd,
+        market:s.rprs_mrkt_kor_name||(mktCode==='Q'?'KOSDAQ':'KOSPI'),
+        vol24h:Number(s.acml_tr_pbmn||0),
+      });
+    });
+  }catch(_){}
+
+  // fallback
+  if(results.length===0){
+    const fb=getDomesticFallback();
+    if(mktFilter==='kospi200') return fb.filter(s=>s.market==='KOSPI');
+    if(mktFilter==='kosdaq100') return fb.filter(s=>s.market==='KOSDAQ');
+    return fb;
+  }
+  return results;
+}
+
+// ── 해외: S&P500 / 나스닥100 / ETF ──────────────────────
+async function loadOverseasByFilter(mktFilter){
+  // KIS 해외 종목 조건검색은 복잡하므로 확장 하드코딩 + API 조합
+  const all=getOverseasExtended();
+  if(mktFilter==='sp500') return all.filter(s=>s.index==='SP500');
+  if(mktFilter==='nasdaq100') return all.filter(s=>s.index==='NDX100');
+  if(mktFilter==='etf') return all.filter(s=>s.market==='ETF');
+  return all;
+}
+
+function getOverseasExtended(){
+  return [
+    // S&P 500 주요 종목 (시총 상위 50)
+    {code:'AAPL',name:'Apple',market:'NASDAQ',index:'SP500',vol24h:0},
+    {code:'MSFT',name:'Microsoft',market:'NASDAQ',index:'SP500',vol24h:0},
+    {code:'NVDA',name:'NVIDIA',market:'NASDAQ',index:'SP500',vol24h:0},
+    {code:'AMZN',name:'Amazon',market:'NASDAQ',index:'SP500',vol24h:0},
+    {code:'GOOGL',name:'Alphabet A',market:'NASDAQ',index:'SP500',vol24h:0},
+    {code:'META',name:'Meta',market:'NASDAQ',index:'SP500',vol24h:0},
+    {code:'TSLA',name:'Tesla',market:'NASDAQ',index:'SP500',vol24h:0},
+    {code:'AVGO',name:'Broadcom',market:'NASDAQ',index:'SP500',vol24h:0},
+    {code:'BRK.B',name:'Berkshire B',market:'NYSE',index:'SP500',vol24h:0},
+    {code:'LLY',name:'Eli Lilly',market:'NYSE',index:'SP500',vol24h:0},
+    {code:'JPM',name:'JPMorgan',market:'NYSE',index:'SP500',vol24h:0},
+    {code:'V',name:'Visa',market:'NYSE',index:'SP500',vol24h:0},
+    {code:'XOM',name:'ExxonMobil',market:'NYSE',index:'SP500',vol24h:0},
+    {code:'UNH',name:'UnitedHealth',market:'NYSE',index:'SP500',vol24h:0},
+    {code:'MA',name:'Mastercard',market:'NYSE',index:'SP500',vol24h:0},
+    {code:'PG',name:'Procter & Gamble',market:'NYSE',index:'SP500',vol24h:0},
+    {code:'COST',name:'Costco',market:'NASDAQ',index:'SP500',vol24h:0},
+    {code:'JNJ',name:'Johnson & Johnson',market:'NYSE',index:'SP500',vol24h:0},
+    {code:'HD',name:'Home Depot',market:'NYSE',index:'SP500',vol24h:0},
+    {code:'ABBV',name:'AbbVie',market:'NYSE',index:'SP500',vol24h:0},
+    {code:'WMT',name:'Walmart',market:'NYSE',index:'SP500',vol24h:0},
+    {code:'NFLX',name:'Netflix',market:'NASDAQ',index:'SP500',vol24h:0},
+    {code:'BAC',name:'Bank of America',market:'NYSE',index:'SP500',vol24h:0},
+    {code:'CRM',name:'Salesforce',market:'NYSE',index:'SP500',vol24h:0},
+    {code:'CVX',name:'Chevron',market:'NYSE',index:'SP500',vol24h:0},
+    {code:'MRK',name:'Merck',market:'NYSE',index:'SP500',vol24h:0},
+    {code:'KO',name:'Coca-Cola',market:'NYSE',index:'SP500',vol24h:0},
+    {code:'PEP',name:'PepsiCo',market:'NASDAQ',index:'SP500',vol24h:0},
+    {code:'AMD',name:'AMD',market:'NASDAQ',index:'SP500',vol24h:0},
+    {code:'TMO',name:'Thermo Fisher',market:'NYSE',index:'SP500',vol24h:0},
+    {code:'LIN',name:'Linde',market:'NASDAQ',index:'SP500',vol24h:0},
+    {code:'CSCO',name:'Cisco',market:'NASDAQ',index:'SP500',vol24h:0},
+    {code:'ADBE',name:'Adobe',market:'NASDAQ',index:'SP500',vol24h:0},
+    {code:'ACN',name:'Accenture',market:'NYSE',index:'SP500',vol24h:0},
+    {code:'ABT',name:'Abbott',market:'NYSE',index:'SP500',vol24h:0},
+    {code:'MCD',name:'McDonald\'s',market:'NYSE',index:'SP500',vol24h:0},
+    {code:'DIS',name:'Disney',market:'NYSE',index:'SP500',vol24h:0},
+    {code:'DHR',name:'Danaher',market:'NYSE',index:'SP500',vol24h:0},
+    {code:'TXN',name:'Texas Instruments',market:'NASDAQ',index:'SP500',vol24h:0},
+    {code:'VZ',name:'Verizon',market:'NYSE',index:'SP500',vol24h:0},
+    {code:'NEE',name:'NextEra Energy',market:'NYSE',index:'SP500',vol24h:0},
+    {code:'PM',name:'Philip Morris',market:'NYSE',index:'SP500',vol24h:0},
+    {code:'RTX',name:'RTX Corp',market:'NYSE',index:'SP500',vol24h:0},
+    {code:'INTC',name:'Intel',market:'NASDAQ',index:'SP500',vol24h:0},
+    {code:'NKE',name:'Nike',market:'NYSE',index:'SP500',vol24h:0},
+    {code:'BMY',name:'Bristol-Myers',market:'NYSE',index:'SP500',vol24h:0},
+    {code:'GE',name:'GE Aerospace',market:'NYSE',index:'SP500',vol24h:0},
+    {code:'ISRG',name:'Intuitive Surgical',market:'NASDAQ',index:'SP500',vol24h:0},
+    {code:'CAT',name:'Caterpillar',market:'NYSE',index:'SP500',vol24h:0},
+    {code:'GS',name:'Goldman Sachs',market:'NYSE',index:'SP500',vol24h:0},
+    // 나스닥 100 (S&P 미포함 주요 종목)
+    {code:'TSM',name:'TSMC',market:'NYSE',index:'NDX100',vol24h:0},
+    {code:'ORCL',name:'Oracle',market:'NYSE',index:'NDX100',vol24h:0},
+    {code:'PLTR',name:'Palantir',market:'NASDAQ',index:'NDX100',vol24h:0},
+    {code:'QCOM',name:'Qualcomm',market:'NASDAQ',index:'NDX100',vol24h:0},
+    {code:'AMAT',name:'Applied Materials',market:'NASDAQ',index:'NDX100',vol24h:0},
+    {code:'PANW',name:'Palo Alto',market:'NASDAQ',index:'NDX100',vol24h:0},
+    {code:'MU',name:'Micron',market:'NASDAQ',index:'NDX100',vol24h:0},
+    {code:'MRVL',name:'Marvell',market:'NASDAQ',index:'NDX100',vol24h:0},
+    {code:'LRCX',name:'Lam Research',market:'NASDAQ',index:'NDX100',vol24h:0},
+    {code:'KLAC',name:'KLA Corp',market:'NASDAQ',index:'NDX100',vol24h:0},
+    {code:'SNPS',name:'Synopsys',market:'NASDAQ',index:'NDX100',vol24h:0},
+    {code:'CDNS',name:'Cadence',market:'NASDAQ',index:'NDX100',vol24h:0},
+    {code:'CRWD',name:'CrowdStrike',market:'NASDAQ',index:'NDX100',vol24h:0},
+    {code:'MELI',name:'MercadoLibre',market:'NASDAQ',index:'NDX100',vol24h:0},
+    {code:'COIN',name:'Coinbase',market:'NASDAQ',index:'NDX100',vol24h:0},
+    {code:'SHOP',name:'Shopify',market:'NYSE',index:'NDX100',vol24h:0},
+    {code:'SNOW',name:'Snowflake',market:'NYSE',index:'NDX100',vol24h:0},
+    {code:'NET',name:'Cloudflare',market:'NYSE',index:'NDX100',vol24h:0},
+    {code:'DDOG',name:'Datadog',market:'NASDAQ',index:'NDX100',vol24h:0},
+    {code:'SQ',name:'Block (Square)',market:'NYSE',index:'NDX100',vol24h:0},
+    {code:'ROKU',name:'Roku',market:'NASDAQ',index:'NDX100',vol24h:0},
+    {code:'SMCI',name:'Super Micro',market:'NASDAQ',index:'NDX100',vol24h:0},
+    {code:'ARM',name:'ARM Holdings',market:'NASDAQ',index:'NDX100',vol24h:0},
+    {code:'ON',name:'ON Semiconductor',market:'NASDAQ',index:'NDX100',vol24h:0},
+    {code:'MSTR',name:'MicroStrategy',market:'NASDAQ',index:'NDX100',vol24h:0},
+    // ETF
+    {code:'SPY',name:'SPDR S&P500',market:'ETF',index:'ETF',vol24h:0},
+    {code:'QQQ',name:'Invesco NASDAQ',market:'ETF',index:'ETF',vol24h:0},
+    {code:'TQQQ',name:'ProShares 3x QQQ',market:'ETF',index:'ETF',vol24h:0},
+    {code:'SQQQ',name:'ProShares -3x QQQ',market:'ETF',index:'ETF',vol24h:0},
+    {code:'IWM',name:'iShares Russell 2000',market:'ETF',index:'ETF',vol24h:0},
+    {code:'GLD',name:'SPDR Gold',market:'ETF',index:'ETF',vol24h:0},
+    {code:'TLT',name:'iShares 20yr Bond',market:'ETF',index:'ETF',vol24h:0},
+    {code:'ARKK',name:'ARK Innovation',market:'ETF',index:'ETF',vol24h:0},
+    {code:'SOXX',name:'iShares Semiconductor',market:'ETF',index:'ETF',vol24h:0},
+    {code:'SCHD',name:'Schwab Dividend',market:'ETF',index:'ETF',vol24h:0},
+    {code:'VOO',name:'Vanguard S&P500',market:'ETF',index:'ETF',vol24h:0},
+    {code:'VTI',name:'Vanguard Total Mkt',market:'ETF',index:'ETF',vol24h:0},
+    {code:'XLF',name:'Financial Select',market:'ETF',index:'ETF',vol24h:0},
+    {code:'XLE',name:'Energy Select',market:'ETF',index:'ETF',vol24h:0},
+    {code:'XLK',name:'Technology Select',market:'ETF',index:'ETF',vol24h:0},
+    {code:'DIA',name:'SPDR Dow Jones',market:'ETF',index:'ETF',vol24h:0},
+    {code:'EEM',name:'iShares Emerging',market:'ETF',index:'ETF',vol24h:0},
+    {code:'HYG',name:'iShares High Yield',market:'ETF',index:'ETF',vol24h:0},
+    {code:'USO',name:'US Oil Fund',market:'ETF',index:'ETF',vol24h:0},
+    {code:'SLV',name:'iShares Silver',market:'ETF',index:'ETF',vol24h:0},
+  ];
+}
 function getKisConfig(){
   return {
     appKey:    Store.get('KIS_APP_KEY')||''  ,
@@ -1245,6 +1543,56 @@ function clearAllData(){
 // ══════════════════════════════════════════════════════════
 // 추천기
 // ══════════════════════════════════════════════════════════
+// ── KIS 종목 스캔 ────────────────────────────────────────
+async function runScanUI(){
+  state.useYF=false;
+  const btn=document.getElementById('btnScan');
+  const status=document.getElementById('scanStatus');
+  const prog=document.getElementById('scanProg');
+  const fill=document.getElementById('progFill');
+  const text=document.getElementById('progText');
+  const resultCard=document.getElementById('recResultCard');
+  btn.disabled=true; btn.textContent='분석 중...';
+  status.textContent=''; prog.style.display='block';
+  resultCard.style.display='none'; fill.style.width='0%';
+
+  try{
+    const cfg=getKisConfig();
+    if(!cfg.appKey){ throw new Error('KIS API 키가 없습니다. 설정 탭에서 입력해주세요'); }
+    // 토큰 미리 확보
+    await getKisToken();
+
+    let universe=getFilteredUniverse();
+    if(!universe.length){ await autoLoadUniverse(); universe=getFilteredUniverse(); }
+    if(!universe.length){ universe=state.mode==='domestic'?getDomesticFallback():getOverseasFallback(); }
+    const stocks=universe.slice(0,state.scanRange);
+
+    const results=[]; let done=0;
+    for(const s of stocks){
+      try{
+        const rows=await fetchStockCandles(s.code, state.scanTf, state.scanTf==='W'?300:state.scanTf==='M'?300:200);
+        const scan=quickScore(rows);
+        results.push({code:s.code, name:s.name, market:s.market, ...scan});
+      }catch(_){}
+      done++;
+      fill.style.width=`${Math.round((done/stocks.length)*100)}%`;
+      text.textContent=`${done}/${stocks.length} — ${s.name}`;
+      await sleep(SCAN_DELAY);
+    }
+    results.sort((a,b)=>b.score-a.score);
+    const filtered=state.scanFilter==='all'?results:results.filter(r=>r.action===state.scanFilter);
+    const buyCount=results.filter(r=>r.action==='BUY').length;
+    prog.style.display='none';
+    status.textContent=`✅ ${results.length}개 스캔 완료 · BUY ${buyCount}개`;
+    renderRankList(filtered);
+  }catch(e){
+    prog.style.display='none';
+    status.textContent=`오류: ${e.message}`;
+  }finally{
+    btn.disabled=false; btn.textContent='종목 스캔';
+  }
+}
+
 async function runScanUIYF(){
   state.useYF=true; // YF 스캔 → 이후 분석기도 YF 사용
   const btn=document.getElementById('btnScanYF');
