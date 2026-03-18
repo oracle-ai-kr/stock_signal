@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#050810">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>ORACLE — 종목 탐색기</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#050810;--bg2:#070b14;--surf:#0a1120;--surf2:#0d1628;--surf3:#111e32;--bdr:#162030;--bdr2:#1c2d42;--green:#00e5a0;--red:#ff3355;--yellow:#ffcc00;--blue:#3d8eff;--cyan:#00d4ff;--orange:#ff8c3a;--purple:#9966ff;--gold:#ffc844;--text:#b4c8e0;--text2:#6a8faa;--muted:#304858;--mono:'JetBrains Mono',monospace;--safe-top:env(safe-area-inset-top,0px);--safe-bot:env(safe-area-inset-bottom,0px);}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html{height:100%;-webkit-text-size-adjust:100%;}
+body{height:100%;background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:13px;display:flex;flex-direction:column;overflow:hidden;-webkit-font-smoothing:antialiased;padding-top:var(--safe-top);}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.025) 2px,rgba(0,0,0,.025) 4px);pointer-events:none;z-index:9999;}
+.hdr{background:var(--surf);border-bottom:1px solid var(--bdr);padding:10px 14px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;position:relative;}
+.hdr::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--cyan),var(--blue),transparent);opacity:.35;}
+.logo{font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:3px;color:var(--cyan);display:flex;align-items:center;gap:7px;}
+.logo-dot{width:7px;height:7px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan);animation:pulse 2s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.7)}}
+.logo-sub{font-family:var(--mono);font-size:8px;color:var(--muted);letter-spacing:2px;}
+.hdr-r{display:flex;gap:6px;align-items:center;}
+.kis-badge{font-family:var(--mono);font-size:9px;padding:2px 8px;border-radius:100px;white-space:nowrap;}
+.kis-badge.ok{color:var(--green);border:1px solid var(--green);background:rgba(0,229,160,.08);}
+.kis-badge.no{color:var(--muted);border:1px solid var(--bdr);}
+.gear-btn{background:transparent;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:4px;min-width:36px;min-height:36px;display:flex;align-items:center;justify-content:center;touch-action:manipulation;}
+.gear-btn:active{color:var(--cyan);}
+
+/* 설정 패널 */
+.cfg{display:none;background:var(--surf);border-bottom:1px solid var(--bdr);padding:12px 14px;flex-shrink:0;}
+.cfg.show{display:block;}
+.cfg-row{display:flex;gap:6px;align-items:center;margin-bottom:6px;}
+.cfg-row:last-child{margin-bottom:0;}
+.cfg-in{flex:1;background:var(--surf2);border:1px solid var(--bdr2);color:var(--text);padding:10px 12px;border-radius:8px;font-family:var(--mono);font-size:13px;outline:none;-webkit-appearance:none;}
+.cfg-in:focus{border-color:var(--cyan);}
+.cfg-in::placeholder{color:var(--muted);font-size:11px;}
+.cfg-btn{font-family:var(--mono);font-size:10px;font-weight:700;padding:10px 12px;border-radius:8px;cursor:pointer;background:var(--surf3);border:1px solid var(--bdr2);color:var(--text2);min-height:40px;touch-action:manipulation;white-space:nowrap;}
+.cfg-btn:active{border-color:var(--cyan);color:var(--cyan);}
+.cfg-st{font-family:var(--mono);font-size:9px;padding:2px 8px;border-radius:100px;}
+.cfg-st.ok{color:var(--green);border:1px solid var(--green);}
+.cfg-st.fail{color:var(--red);border:1px solid var(--red);}
+.cfg-st.wait{color:var(--yellow);}
+.cfg-note{font-family:var(--mono);font-size:9px;color:var(--muted);line-height:1.7;margin-top:4px;}
+
+/* 탭 */
+.tabs{display:flex;border-bottom:1px solid var(--bdr);flex-shrink:0;background:var(--surf);}
+.tab{flex:1;text-align:center;padding:9px 0;font-family:var(--mono);font-size:11px;font-weight:700;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;min-height:38px;touch-action:manipulation;}
+.tab:active{opacity:.7;}
+.tab.on{color:var(--cyan);border-bottom-color:var(--cyan);}
+
+/* 필터+페이지 */
+.bar{background:var(--surf2);border-bottom:1px solid var(--bdr);padding:6px 10px;flex-shrink:0;display:flex;flex-wrap:wrap;gap:4px;align-items:center;}
+.fb{font-family:var(--mono);font-size:10px;padding:5px 10px;border-radius:100px;cursor:pointer;background:transparent;border:1.5px solid var(--bdr2);color:var(--muted);transition:all .15s;min-height:28px;touch-action:manipulation;white-space:nowrap;}
+.fb:active{opacity:.7;}
+.fb.on{border-color:var(--cyan);color:var(--cyan);background:rgba(0,212,255,.08);}
+.pb{font-family:var(--mono);font-size:9px;padding:4px 8px;border-radius:4px;cursor:pointer;background:var(--surf2);border:1px solid var(--bdr);color:var(--muted);min-height:24px;touch-action:manipulation;}
+.pb.on{border-color:var(--cyan);color:var(--cyan);background:rgba(0,212,255,.1);}
+.sep{width:1px;height:16px;background:var(--bdr);flex-shrink:0;}
+
+/* 액션 */
+.act{background:var(--surf);border-bottom:1px solid var(--bdr);padding:6px 12px;flex-shrink:0;display:flex;gap:8px;align-items:center;}
+.scan{flex:1;font-family:var(--mono);font-size:12px;font-weight:700;padding:10px;border-radius:8px;cursor:pointer;background:linear-gradient(135deg,var(--cyan),var(--blue));color:#000;border:none;min-height:40px;touch-action:manipulation;}
+.scan:active{filter:brightness(.85);}
+.scan:disabled{background:var(--muted);cursor:not-allowed;color:var(--bg);}
+.cnt{font-family:var(--mono);font-size:10px;color:var(--text2);white-space:nowrap;}
+
+/* 리스트 */
+.list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
+.it{display:flex;align-items:center;gap:8px;padding:11px 12px;border-bottom:1px solid var(--bdr);cursor:pointer;transition:background .1s;min-height:42px;}
+.it:active{background:var(--surf3);}
+.it-r{font-family:var(--mono);font-size:10px;color:var(--muted);min-width:30px;text-align:right;}
+.it-c{font-family:var(--mono);font-size:11px;font-weight:700;min-width:55px;}
+.it-n{flex:1;font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.it-m{font-family:var(--mono);font-size:9px;color:var(--muted);white-space:nowrap;}
+.empty{padding:40px 16px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--muted);line-height:2;}
+
+.toast{position:fixed;bottom:max(80px,calc(60px + var(--safe-bot)));left:50%;transform:translateX(-50%) translateY(16px);background:var(--surf2);border:1px solid var(--bdr2);color:var(--text);padding:10px 20px;border-radius:100px;font-size:12px;font-family:var(--mono);opacity:0;transition:all .25s;pointer-events:none;z-index:10000;white-space:nowrap;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+input{font-size:16px !important;}
+::-webkit-scrollbar{width:3px;height:3px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:2px;}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div><div class="logo"><div class="logo-dot"></div>ORACLE EXPLORER</div><div class="logo-sub">종목 탐색기 v1</div></div>
+  <div class="hdr-r">
+    <span class="kis-badge no" id="kisBadge">KIS ✗</span>
+    <button type="button" class="gear-btn" onclick="toggleCfg()">⚙</button>
+  </div>
+</header>
+
+<div class="cfg" id="cfgPanel">
+  <div class="cfg-row">
+    <input class="cfg-in" id="inKey" type="password" placeholder="KIS App Key" autocomplete="off">
+  </div>
+  <div class="cfg-row">
+    <input class="cfg-in" id="inSec" type="password" placeholder="KIS App Secret" autocomplete="off">
+    <button type="button" class="cfg-btn" onclick="testKis()">🔌 연결 테스트</button>
+  </div>
+  <div class="cfg-row">
+    <span class="cfg-st" id="cfgSt" style="display:none"></span>
+    <button type="button" class="cfg-btn" onclick="saveKeys()" style="margin-left:auto">💾 저장</button>
+  </div>
+  <div class="cfg-note">키는 localStorage에만 저장 · 모든 ORACLE 앱에서 공유<br>KIS Developers: <a href="https://apiportal.koreainvestment.com" target="_blank" style="color:var(--cyan)">apiportal.koreainvestment.com</a></div>
+</div>
+
+<div class="tabs" id="tabs">
+  <div class="tab on" data-t="coin" onclick="setTab('coin')">₿ 코인</div>
+  <div class="tab" data-t="kr" onclick="setTab('kr')">🇰🇷 국내</div>
+  <div class="tab" data-t="us" onclick="setTab('us')">🇺🇸 해외</div>
+  <div class="tab" data-t="macro" onclick="setTab('macro')">🌐 매크로</div>
+</div>
+
+<div class="bar" id="filterBar"></div>
+<div class="bar" id="pageBar" style="display:none"></div>
+
+<div class="act">
+  <button type="button" class="scan" id="scanBtn" onclick="doScan()">🔍 종목 탐색</button>
+  <span class="cnt" id="cntLabel">—</span>
+</div>
+
+<div class="list" id="listArea">
+  <div class="empty">📡 탭을 선택하고 🔍 탐색을 누르세요<br><br><span style="font-size:10px;color:var(--muted);">탐색된 종목은 localStorage에 저장되어<br>모든 ORACLE 분석기에서 사용됩니다</span></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════
+// localStorage
+// ═══════════════════════════════════════════
+let _lsOk=false;
+try{localStorage.setItem('__t','1');localStorage.removeItem('__t');_lsOk=true;}catch(_){}
+const S={
+  get(k){if(_lsOk){try{return localStorage.getItem(k)}catch(_){}}return null;},
+  set(k,v){if(_lsOk){try{localStorage.setItem(k,v)}catch(_){}}},
+  del(k){if(_lsOk){try{localStorage.removeItem(k)}catch(_){}}},
+};
+
+const PROXY='https://stock-signal-proxy.cheaheechang.workers.dev';
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400);}
+function vibrate(p=30){try{navigator.vibrate&&navigator.vibrate(p)}catch(_){}}
+
+// ═══════════════════════════════════════════
+// KIS 키 관리
+// ═══════════════════════════════════════════
+function toggleCfg(){
+  const p=document.getElementById('cfgPanel');
+  p.classList.toggle('show');
+  if(p.classList.contains('show')){
+    document.getElementById('inKey').value=S.get('KIS_APP_KEY')||'';
+    document.getElementById('inSec').value=S.get('KIS_APP_SECRET')||'';
+  }
+}
+function saveKeys(){
+  const k=document.getElementById('inKey').value.trim();
+  const s=document.getElementById('inSec').value.trim();
+  if(k)S.set('KIS_APP_KEY',k); if(s)S.set('KIS_APP_SECRET',s);
+  // signal_lab 호환 키도 동기화
+  if(k)S.set('SL_KIS_APP',k); if(s)S.set('SL_KIS_SECRET',s);
+  toast('✓ 키 저장 완료');
+  updateKisBadge();
+}
+function updateKisBadge(){
+  const b=document.getElementById('kisBadge');
+  const ok=S.get('KIS_APP_KEY')&&S.get('KIS_APP_SECRET');
+  b.textContent=ok?'KIS ✓':'KIS ✗'; b.className=ok?'kis-badge ok':'kis-badge no';
+}
+let _kisToken=null,_kisTokenExp=0;
+async function getKisToken(){
+  const ak=S.get('KIS_APP_KEY'),as=S.get('KIS_APP_SECRET');
+  if(!ak||!as)throw new Error('KIS 키 없음');
+  if(_kisToken&&Date.now()<_kisTokenExp)return _kisToken;
+  const cached=S.get('KIS_TOKEN'),exp=Number(S.get('KIS_TOKEN_EXP')||0);
+  if(cached&&Date.now()<exp){_kisToken=cached;_kisTokenExp=exp;return cached;}
+  const res=await fetch(`${PROXY}/kis/oauth2/tokenP`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({grant_type:'client_credentials',appkey:ak,appsecret:as})});
+  if(!res.ok)throw new Error('토큰 발급 실패 '+res.status);
+  const d=await res.json();
+  if(!d.access_token)throw new Error(d.msg1||'토큰 실패');
+  _kisToken=d.access_token;_kisTokenExp=Date.now()+6*3600000;
+  S.set('KIS_TOKEN',d.access_token);S.set('KIS_TOKEN_EXP',String(_kisTokenExp));
+  return d.access_token;
+}
+async function kisGet(path,params={}){
+  const token=await getKisToken(),ak=S.get('KIS_APP_KEY'),as=S.get('KIS_APP_SECRET');
+  const qs=new URLSearchParams(params).toString();
+  const res=await fetch(`${PROXY}/kis${path}?${qs}`,{headers:{'authorization':'Bearer '+token,'appkey':ak,'appsecret':as,'tr_id':params.tr_id||'','Content-Type':'application/json; charset=utf-8'}});
+  if(!res.ok)throw new Error('KIS '+res.status);
+  const d=await res.json();
+  if(d.rt_cd&&d.rt_cd!=='0')throw new Error(d.msg1||'KIS err');
+  return d;
+}
+async function testKis(){
+  vibrate();const st=document.getElementById('cfgSt');st.style.display='inline';st.textContent='⏳ 테스트 중...';st.className='cfg-st wait';
+  const k=document.getElementById('inKey').value.trim(),s=document.getElementById('inSec').value.trim();
+  if(!k||!s){st.textContent='키를 입력해주세요';st.className='cfg-st fail';return;}
+  S.set('KIS_APP_KEY',k);S.set('KIS_APP_SECRET',s);S.set('SL_KIS_APP',k);S.set('SL_KIS_SECRET',s);
+  _kisToken=null;_kisTokenExp=0;S.del('KIS_TOKEN');S.del('KIS_TOKEN_EXP');
+  try{await getKisToken();st.textContent='✓ 연결 성공';st.className='cfg-st ok';toast('✓ KIS 연결 성공!');updateKisBadge();}
+  catch(e){st.textContent='✗ '+e.message;st.className='cfg-st fail';toast('연결 실패: '+e.message);}
+}
+
+// ═══════════════════════════════════════════
+// 상태
+// ═══════════════════════════════════════════
+const ST={tab:'coin',filter:'all',page:0};
+const PAGE_SIZE=200;
+
+// ═══════════════════════════════════════════
+// 탭
+// ═══════════════════════════════════════════
+function setTab(t){
+  vibrate(15);ST.tab=t;ST.filter='all';ST.page=0;
+  document.querySelectorAll('.tab').forEach(b=>{b.classList.toggle('on',b.dataset.t===t);});
+  renderFilters();renderPages([]);renderList([]);
+  document.getElementById('cntLabel').textContent='—';
+}
+function setFilter(f){vibrate(15);ST.filter=f;ST.page=0;renderFilters();renderPages([]);}
+function setPage(p){vibrate(15);ST.page=p;}
+
+function renderFilters(){
+  const bar=document.getElementById('filterBar');
+  const t=ST.tab;let html='';
+  if(t==='coin'){
+    html=[{l:'전체',v:'all'}].map(f=>`<button class="fb${ST.filter===f.v?' on':''}" onclick="setFilter('${f.v}')">${f.l}</button>`).join('');
+  }else if(t==='kr'){
+    html=[{l:'코스피',v:'kospi'},{l:'코스닥',v:'kosdaq'},{l:'ETF',v:'etf'}].map(f=>`<button class="fb${ST.filter===f.v?' on':''}" onclick="setFilter('${f.v}')">${f.l}</button>`).join('');
+    if(ST.filter==='all')ST.filter='kospi';
+  }else if(t==='us'){
+    html=[{l:'S&P 500',v:'sp500'},{l:'나스닥100',v:'ndx'},{l:'다우30',v:'dow'},{l:'ETF',v:'etf'}].map(f=>`<button class="fb${ST.filter===f.v?' on':''}" onclick="setFilter('${f.v}')">${f.l}</button>`).join('');
+    if(ST.filter==='all')ST.filter='sp500';
+  }else if(t==='macro'){
+    html=[{l:'전체',v:'all'},{l:'국내지수',v:'kr_idx'},{l:'해외지수',v:'us_idx'},{l:'금리',v:'rate'},{l:'환율',v:'fx'},{l:'원자재',v:'commodity'},{l:'코인매크로',v:'crypto'}].map(f=>`<button class="fb${ST.filter===f.v?' on':''}" onclick="setFilter('${f.v}')">${f.l}</button>`).join('');
+  }
+  bar.innerHTML=html;
+}
+function renderPages(items){
+  const bar=document.getElementById('pageBar');
+  const total=items.length,maxP=Math.ceil(total/PAGE_SIZE);
+  if(maxP<=1){bar.style.display='none';bar.innerHTML='';return;}
+  bar.style.display='flex';
+  bar.innerHTML=Array.from({length:maxP},(_, i)=>{
+    const s=i*PAGE_SIZE+1,e=Math.min((i+1)*PAGE_SIZE,total);
+    return `<button class="pb${ST.page===i?' on':''}" onclick="ST.page=${i};renderSlice(window._lastItems)">${s}~${e}</button>`;
+  }).join('');
+}
+function renderList(items){
+  window._lastItems=items;
+  renderPages(items);
+  renderSlice(items);
+}
+function renderSlice(items){
+  const list=document.getElementById('listArea');
+  if(!items||!items.length){list.innerHTML='<div class="empty">데이터 없음 — 🔍 탐색을 눌러주세요</div>';return;}
+  const start=ST.page*PAGE_SIZE,slice=items.slice(start,start+PAGE_SIZE);
+  const t=ST.tab;
+  const codeColor=t==='coin'?'color:var(--gold)':t==='kr'?'color:var(--orange)':t==='us'?'color:var(--orange)':'color:var(--green)';
+  list.innerHTML=slice.map((s,i)=>`<div class="it" onclick="copyTicker('${s.code}','${(s.name||'').replace(/'/g,"\\'")}')">
+    <span class="it-r">${start+i+1}</span>
+    <span class="it-c" style="${codeColor}">${s.code}</span>
+    <span class="it-n">${s.name||''}</span>
+    <span class="it-m">${s.market||''}</span>
+  </div>`).join('');
+  // 페이지 버튼 활성 상태 갱신
+  document.querySelectorAll('#pageBar .pb').forEach((b,i)=>b.classList.toggle('on',i===ST.page));
+}
+function copyTicker(code,name){
+  vibrate(20);
+  if(navigator.clipboard?.writeText) navigator.clipboard.writeText(code).catch(()=>{});
+  toast(`📋 ${code} ${name}`);
+}
+
+// ═══════════════════════════════════════════
+// 탐색 실행
+// ═══════════════════════════════════════════
+async function doScan(){
+  vibrate();const btn=document.getElementById('scanBtn'),cnt=document.getElementById('cntLabel');
+  btn.disabled=true;btn.textContent='⏳ 탐색 중...';cnt.textContent='';
+  const list=document.getElementById('listArea');
+  list.innerHTML='<div class="empty">⏳ 데이터 수집 중...</div>';
+  ST.page=0;
+  try{
+    let items=[];
+    if(ST.tab==='coin') items=await scanCoin();
+    else if(ST.tab==='kr') items=await scanKr(ST.filter);
+    else if(ST.tab==='us') items=await scanUs(ST.filter);
+    else if(ST.tab==='macro') items=await scanMacro(ST.filter);
+    cnt.textContent=`${items.length}개`;
+    renderList(items);
+    toast(`✓ ${items.length}개 종목 탐색 완료`);
+  }catch(e){
+    cnt.textContent='오류';
+    list.innerHTML=`<div class="empty">⚠️ ${e.message}<br><br><span style="font-size:10px;color:var(--muted)">KIS 키를 확인하거나 네트워크를 확인하세요</span></div>`;
+    toast('탐색 실패: '+e.message);
+  }finally{btn.disabled=false;btn.textContent='🔍 종목 탐색';}
+}
+
+// ═══════════════════════════════════════════
+// 코인 — 업비트 전종목 (시총순)
+// ═══════════════════════════════════════════
+async function scanCoin(){
+  // 1. 업비트 전종목
+  const mkts=await fetch('https://api.upbit.com/v1/market/all?isDetails=true',{signal:AbortSignal.timeout(8000)}).then(r=>r.json());
+  const krw=mkts.filter(m=>m.market.startsWith('KRW-'));
+
+  // 2. CoinGecko 시총순 (상위 250)
+  let mcap={};
+  try{
+    const cg=await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1',{signal:AbortSignal.timeout(10000)}).then(r=>r.json());
+    if(Array.isArray(cg)) cg.forEach((c,i)=>{mcap[c.symbol.toLowerCase()]={rank:i+1,mc:c.market_cap||0};});
+  }catch(_){}
+
+  const items=krw.map(m=>{
+    const sym=m.market.split('-')[1].toLowerCase();
+    return{code:sym.toUpperCase(),name:m.korean_name||sym.toUpperCase(),market:'KRW',mcRank:mcap[sym]?.rank||9999};
+  }).sort((a,b)=>a.mcRank-b.mcRank);
+
+  // localStorage에 저장 — 다른 앱에서 사용
+  S.set('ORACLE_COIN',JSON.stringify(items));
+  S.set('ORACLE_COIN_TS',String(Date.now()));
+  // coin_signal 호환
+  const uniCompat=items.map(i=>({market:'KRW-'+i.code,symbol:i.code,name:i.name,vol24h:0}));
+  S.set('UNIVERSE',JSON.stringify(uniCompat));
+  S.set('UNIVERSE_TS',String(Date.now()));
+  return items;
+}
+
+// ═══════════════════════════════════════════
+// 국내주식 — KIS 시총순
+// ═══════════════════════════════════════════
+async function scanKr(filter){
+  const mktCode=filter==='kosdaq'?'Q':'J';
+  const blng=filter==='etf'?'4':'0';
+  const scrCode=filter==='etf'?'20171':'20171';
+
+  const data=await kisGet('/uapi/domestic-stock/v1/ranking/market-cap',{
+    tr_id:'FHPST01710000',
+    FID_COND_MRKT_DIV_CODE:mktCode,
+    FID_COND_SCR_DIV_CODE:scrCode,
+    FID_INPUT_ISCD:'0000',
+    FID_DIV_CLS_CODE:'0',
+    FID_BLNG_CLS_CODE:blng,
+    FID_TRGT_CLS_CODE:'111111111',
+    FID_TRGT_EXLS_CLS_CODE:'000000',
+    FID_INPUT_PRICE_1:'',
+    FID_INPUT_PRICE_2:'',
+    FID_VOL_CNT:'',
+    FID_INPUT_DATE_1:'',
+  });
+  const output=data.output||[];
+  const suffix=filter==='kosdaq'?'.KQ':'.KS';
+  const mktLabel=filter==='etf'?'ETF':filter==='kosdaq'?'코스닥':'코스피';
+  const items=output.map((s,i)=>({
+    code:s.mksc_shrn_iscd||'',
+    name:s.hts_kor_isnm||'',
+    market:mktLabel,
+    rank:i+1,
+  })).filter(s=>s.code);
+
+  // localStorage 저장
+  const key='ORACLE_KR_'+filter.toUpperCase();
+  S.set(key,JSON.stringify(items));
+  S.set(key+'_TS',String(Date.now()));
+  // stock_signal 호환
+  const domCompat=items.map(s=>({code:s.code,name:s.name,market:mktLabel==='코스닥'?'KOSDAQ':mktLabel==='ETF'?'ETF':'KOSPI',vol24h:0}));
+  const existing=JSON.parse(S.get('STOCK_UNIVERSE_DOM')||'[]');
+  const codeSet=new Set(existing.map(s=>s.code));
+  const merged=[...existing,...domCompat.filter(s=>!codeSet.has(s.code))];
+  S.set('STOCK_UNIVERSE_DOM',JSON.stringify(merged));
+  S.set('STOCK_UNIVERSE_DOM_TS',String(Date.now()));
+  return items;
+}
+
+// ═══════════════════════════════════════════
+// 해외주식 — KIS API
+// ═══════════════════════════════════════════
+async function scanUs(filter){
+  // S&P500, 나스닥100, 다우30은 구성종목이 정해져 있으므로 하드코딩 + KIS 확인
+  if(filter==='sp500') return await loadUsIndex('SP500');
+  if(filter==='ndx') return await loadUsIndex('NDX');
+  if(filter==='dow') return await loadUsIndex('DOW');
+  if(filter==='etf') return loadUsETF();
+  return [];
+}
+
+async function loadUsIndex(idx){
+  // 해외주식은 KIS에서 구성종목 직접 조회가 어려우므로 확장 하드코딩
+  const lists={
+    SP500:[
+      'AAPL','NVDA','MSFT','AMZN','GOOGL','META','TSLA','BRK.B','AVGO','JPM',
+      'LLY','V','UNH','XOM','MA','COST','HD','PG','WMT','NFLX',
+      'JNJ','CRM','ABBV','BAC','ORCL','CVX','MRK','KO','AMD','PEP',
+      'TMO','ADBE','LIN','CSCO','MCD','ACN','ABT','WFC','PM','GE',
+      'IBM','QCOM','TXN','ISRG','INTU','DHR','CAT','AMGN','GS','NOW',
+      'VZ','AMAT','T','BLK','BKNG','LOW','NEE','SPGI','RTX','PFE',
+      'HON','UNP','PLD','AXP','BA','MDLZ','SYK','ADP','COP','SCHW',
+      'DE','BMY','GILD','LRCX','MMC','CB','ADI','VRTX','TJX','MO',
+      'DUK','SO','CME','REGN','CI','BSX','SLB','NOC','ZTS','ICE',
+      'CL','FI','BDX','PYPL','EOG','SHW','CMG','PGR','APD','SNPS',
+    ],
+    NDX:[
+      'AAPL','MSFT','NVDA','AMZN','META','GOOGL','GOOG','AVGO','TSLA','COST',
+      'NFLX','AMD','ADBE','QCOM','PEP','CSCO','INTU','TMUS','AMAT','TXN',
+      'AMGN','ISRG','BKNG','LRCX','ADI','VRTX','MDLZ','REGN','KLAC','SNPS',
+      'PANW','CDNS','PYPL','GILD','MRVL','CRWD','MAR','ORLY','CTAS','FTNT',
+      'ABNB','MCHP','CEG','KDP','DASH','AEP','DXCM','MNST','ODFL','NXPI',
+      'KHC','PCAR','CPRT','PAYX','IDXX','LULU','FAST','EA','ROST','VRSK',
+      'CTSH','ON','BKR','EXC','FANG','ZS','GEHC','XEL','ANSS','CDW',
+      'TTWO','CSGP','GFS','BIIB','DLTR','ILMN','WBD','ALGN','ENPH','DDOG',
+      'TEAM','MRNA','LCID','JD','PDD','MELI','WDAY','ZM','SIRI','RIVN',
+      'COIN','PLTR','MSTR','ARM','SMCI','CRSP','ROKU','OKTA','PINS','SNAP',
+    ],
+    DOW:[
+      'AAPL','MSFT','AMZN','NVDA','V','UNH','JPM','HD','PG','JNJ',
+      'CRM','MRK','CVX','KO','MCD','CSCO','IBM','DIS','GS','AXP',
+      'BA','CAT','HON','WMT','TRV','MMM','NKE','DOW','VZ','AMGN',
+    ],
+  };
+  const tickers=lists[idx]||[];
+  const items=tickers.map((t,i)=>({code:t,name:t,market:idx,rank:i+1}));
+  // 한글 종목명 매핑 (주요 종목)
+  const nameMap={
+    AAPL:'애플',NVDA:'엔비디아',MSFT:'마이크로소프트',AMZN:'아마존',GOOGL:'알파벳(구글)',
+    META:'메타',TSLA:'테슬라','BRK.B':'버크셔해서웨이',AVGO:'브로드컴',JPM:'JP모건',
+    LLY:'일라이릴리',V:'비자',UNH:'유나이티드헬스',XOM:'엑슨모빌',MA:'마스터카드',
+    COST:'코스트코',HD:'홈디포',PG:'P&G',WMT:'월마트',NFLX:'넷플릭스',
+    JNJ:'존슨앤존슨',CRM:'세일즈포스',AMD:'AMD',QCOM:'퀄컴',ADBE:'어도비',
+    BA:'보잉',GS:'골드만삭스',CAT:'캐터필러',DIS:'디즈니',IBM:'IBM',
+    KO:'코카콜라',MCD:'맥도날드',NKE:'나이키',PEP:'펩시코',CSCO:'시스코',
+    INTC:'인텔',COIN:'코인베이스',PLTR:'팔란티어',MSTR:'마이크로스트래티지',
+    ARM:'ARM홀딩스',SMCI:'슈퍼마이크로',MU:'마이크론',
+  };
+  items.forEach(s=>{if(nameMap[s.code])s.name=nameMap[s.code];});
+
+  const key='ORACLE_US_'+idx;
+  S.set(key,JSON.stringify(items));S.set(key+'_TS',String(Date.now()));
+  // stock_signal 호환
+  const ovsCompat=items.map(s=>({code:s.code,name:s.name,market:idx,index:idx,vol24h:0}));
+  const existing=JSON.parse(S.get('STOCK_UNIVERSE_OVS')||'[]');
+  const codeSet=new Set(existing.map(s=>s.code));
+  const merged=[...existing,...ovsCompat.filter(s=>!codeSet.has(s.code))];
+  S.set('STOCK_UNIVERSE_OVS',JSON.stringify(merged));S.set('STOCK_UNIVERSE_OVS_TS',String(Date.now()));
+  return items;
+}
+
+function loadUsETF(){
+  const etfs=[
+    {code:'SPY',name:'S&P500 ETF'},{code:'QQQ',name:'나스닥100 ETF'},{code:'DIA',name:'다우 ETF'},
+    {code:'IWM',name:'러셀2000 ETF'},{code:'VOO',name:'Vanguard S&P500'},{code:'VTI',name:'미국전체'},
+    {code:'SOXL',name:'반도체 3x'},{code:'TQQQ',name:'나스닥 3x'},{code:'SQQQ',name:'나스닥 -3x'},
+    {code:'SPXL',name:'S&P 3x'},{code:'SPXS',name:'S&P -3x'},{code:'UVXY',name:'VIX 1.5x'},
+    {code:'TLT',name:'미장기채 20Y+'},{code:'SHY',name:'미단기채 1-3Y'},{code:'IEF',name:'미중기채 7-10Y'},
+    {code:'HYG',name:'하이일드채권'},{code:'LQD',name:'투자등급채권'},{code:'TIP',name:'물가연동채'},
+    {code:'GLD',name:'금 ETF'},{code:'SLV',name:'은 ETF'},{code:'GDX',name:'금광 ETF'},
+    {code:'USO',name:'원유 ETF'},{code:'UNG',name:'천연가스 ETF'},{code:'DBA',name:'농산물 ETF'},
+    {code:'XLF',name:'금융 섹터'},{code:'XLK',name:'기술 섹터'},{code:'XLE',name:'에너지 섹터'},
+    {code:'XLV',name:'헬스케어 섹터'},{code:'XLI',name:'산업재 섹터'},{code:'XLP',name:'필수소비재'},
+    {code:'XLY',name:'경기소비재'},{code:'XLU',name:'유틸리티'},{code:'XLB',name:'소재 섹터'},
+    {code:'XLRE',name:'부동산 섹터'},{code:'XLC',name:'커뮤니케이션'},
+    {code:'VWO',name:'이머징마켓'},{code:'EFA',name:'선진국(미국외)'},{code:'EEM',name:'이머징ETF'},
+    {code:'FXI',name:'중국 대형'},{code:'INDA',name:'인도 ETF'},{code:'EWJ',name:'일본 ETF'},
+    {code:'EWZ',name:'브라질 ETF'},{code:'EWT',name:'대만 ETF'},{code:'EWY',name:'한국 ETF'},
+    {code:'ARKK',name:'ARK 이노베이션'},{code:'ARKF',name:'ARK 핀테크'},{code:'ARKG',name:'ARK 게놈'},
+    {code:'KWEB',name:'중국 인터넷'},{code:'SMH',name:'반도체 ETF'},{code:'SOXX',name:'반도체지수'},
+    {code:'IBB',name:'바이오텍'},{code:'XBI',name:'바이오텍 S&P'},
+    {code:'BITO',name:'비트코인 선물'},{code:'IBIT',name:'비트코인 현물'},
+    {code:'VNQ',name:'부동산 REIT'},{code:'SCHD',name:'배당성장'},
+    {code:'JEPI',name:'JP모건 프리미엄인컴'},{code:'JEPQ',name:'JP모건 나스닥인컴'},
+    // 레버리지/인버스 추가
+    {code:'UPRO',name:'S&P 3x'},{code:'LABU',name:'바이오 3x'},
+    {code:'TECL',name:'기술 3x'},{code:'FAS',name:'금융 3x'},
+    {code:'TMF',name:'장기채 3x'},{code:'TBT',name:'장기채 -2x'},
+    {code:'NUGT',name:'금광 2x'},{code:'DUST',name:'금광 -2x'},
+    {code:'ERX',name:'에너지 3x'},{code:'BOIL',name:'천연가스 2x'},
+    // 고배당
+    {code:'VYM',name:'고배당'},{code:'HDV',name:'iShares 고배당'},
+    {code:'DVY',name:'배당 셀렉트'},{code:'SPYD',name:'S&P 고배당'},
+    // 기타 인기
+    {code:'MSOS',name:'대마초 ETF'},{code:'HACK',name:'사이버보안'},
+    {code:'ROBO',name:'로봇/AI'},{code:'LIT',name:'리튬/배터리'},
+    {code:'TAN',name:'태양광'},{code:'ICLN',name:'클린에너지'},
+    {code:'JETS',name:'항공사'},{code:'DFEN',name:'방산 3x'},
+    // 100개 채우기
+    {code:'SPLG',name:'저비용 S&P500'},{code:'IVV',name:'iShares S&P500'},
+    {code:'ITOT',name:'미국 전체시장'},{code:'IEMG',name:'이머징 확장'},
+    {code:'AGG',name:'미국 채권 종합'},{code:'BND',name:'Vanguard 채권'},
+    {code:'VTIP',name:'단기 물가연동'},{code:'EMB',name:'이머징 채권'},
+    {code:'PFF',name:'우선주 ETF'},{code:'SGOL',name:'금현물 ETF'},
+  ];
+  const items=etfs.map((e,i)=>({code:e.code,name:e.name,market:'ETF',rank:i+1}));
+  S.set('ORACLE_US_ETF',JSON.stringify(items));S.set('ORACLE_US_ETF_TS',String(Date.now()));
+  const ovsCompat=items.map(s=>({code:s.code,name:s.name,market:'ETF',index:'ETF',vol24h:0}));
+  const existing=JSON.parse(S.get('STOCK_UNIVERSE_OVS')||'[]');
+  const codeSet=new Set(existing.map(s=>s.code));
+  S.set('STOCK_UNIVERSE_OVS',JSON.stringify([...existing,...ovsCompat.filter(s=>!codeSet.has(s.code))]));
+  return items;
+}
+
+// ═══════════════════════════════════════════
+// 매크로 — 지수/금리/환율/원자재/코인매크로
+// ═══════════════════════════════════════════
+function scanMacro(filter){
+  const ALL=[
+    // 국내지수
+    {code:'^KS11',name:'코스피',market:'국내지수',cat:'kr_idx'},
+    {code:'^KQ11',name:'코스닥',market:'국내지수',cat:'kr_idx'},
+    // 해외지수
+    {code:'^GSPC',name:'S&P 500',market:'해외지수',cat:'us_idx'},
+    {code:'^IXIC',name:'나스닥 종합',market:'해외지수',cat:'us_idx'},
+    {code:'^DJI',name:'다우존스',market:'해외지수',cat:'us_idx'},
+    {code:'^RUT',name:'러셀 2000',market:'해외지수',cat:'us_idx'},
+    {code:'^VIX',name:'VIX 공포지수',market:'해외지수',cat:'us_idx'},
+    {code:'^SOX',name:'필라델피아 반도체',market:'해외지수',cat:'us_idx'},
+    {code:'^N225',name:'닛케이 225',market:'해외지수',cat:'us_idx'},
+    {code:'^HSI',name:'항셍지수',market:'해외지수',cat:'us_idx'},
+    {code:'000001.SS',name:'상해종합',market:'해외지수',cat:'us_idx'},
+    {code:'^FTSE',name:'FTSE 100',market:'해외지수',cat:'us_idx'},
+    {code:'^GDAXI',name:'DAX (독일)',market:'해외지수',cat:'us_idx'},
+    {code:'^FCHI',name:'CAC 40 (프랑스)',market:'해외지수',cat:'us_idx'},
+    {code:'^STOXX50E',name:'유로스톡스50',market:'해외지수',cat:'us_idx'},
+    {code:'^TWII',name:'대만 가권지수',market:'해외지수',cat:'us_idx'},
+    {code:'^BSESN',name:'인도 SENSEX',market:'해외지수',cat:'us_idx'},
+    // 금리
+    {code:'^TNX',name:'미국 10년 국채',market:'금리',cat:'rate'},
+    {code:'^IRX',name:'미국 3개월 금리',market:'금리',cat:'rate'},
+    {code:'^TYX',name:'미국 30년 국채',market:'금리',cat:'rate'},
+    {code:'^FVX',name:'미국 5년 국채',market:'금리',cat:'rate'},
+    // 환율
+    {code:'DX-Y.NYB',name:'달러인덱스 DXY',market:'환율',cat:'fx'},
+    {code:'USDKRW=X',name:'원달러',market:'환율',cat:'fx'},
+    {code:'USDJPY=X',name:'달러엔',market:'환율',cat:'fx'},
+    {code:'EURUSD=X',name:'유로달러',market:'환율',cat:'fx'},
+    {code:'GBPUSD=X',name:'파운드달러',market:'환율',cat:'fx'},
+    {code:'USDCNH=X',name:'달러위안',market:'환율',cat:'fx'},
+    {code:'USDCHF=X',name:'달러스위스',market:'환율',cat:'fx'},
+    {code:'AUDUSD=X',name:'호주달러',market:'환율',cat:'fx'},
+    // 원자재
+    {code:'GC=F',name:'금 (Gold)',market:'귀금속',cat:'commodity'},
+    {code:'SI=F',name:'은 (Silver)',market:'귀금속',cat:'commodity'},
+    {code:'PL=F',name:'백금',market:'귀금속',cat:'commodity'},
+    {code:'PA=F',name:'팔라듐',market:'귀금속',cat:'commodity'},
+    {code:'CL=F',name:'WTI 원유',market:'에너지',cat:'commodity'},
+    {code:'BZ=F',name:'브렌트유',market:'에너지',cat:'commodity'},
+    {code:'NG=F',name:'천연가스',market:'에너지',cat:'commodity'},
+    {code:'RB=F',name:'휘발유',market:'에너지',cat:'commodity'},
+    {code:'HG=F',name:'구리',market:'금속',cat:'commodity'},
+    {code:'ZW=F',name:'밀',market:'농산물',cat:'commodity'},
+    {code:'ZC=F',name:'옥수수',market:'농산물',cat:'commodity'},
+    {code:'ZS=F',name:'대두',market:'농산물',cat:'commodity'},
+    {code:'KC=F',name:'커피',market:'농산물',cat:'commodity'},
+    {code:'SB=F',name:'설탕',market:'농산물',cat:'commodity'},
+    {code:'CT=F',name:'면화',market:'농산물',cat:'commodity'},
+    {code:'CC=F',name:'코코아',market:'농산물',cat:'commodity'},
+    // 코인 매크로
+    {code:'BTC-USD',name:'비트코인',market:'코인매크로',cat:'crypto'},
+    {code:'ETH-USD',name:'이더리움',market:'코인매크로',cat:'crypto'},
+    {code:'BTC_DOM',name:'BTC 도미넌스',market:'코인매크로',cat:'crypto',note:'CoinGecko'},
+    {code:'TOTAL_MCAP',name:'전체 코인 시총',market:'코인매크로',cat:'crypto',note:'CoinGecko'},
+    {code:'FEAR_GREED',name:'공포&탐욕지수',market:'코인매크로',cat:'crypto',note:'alternative.me'},
+  ];
+
+  const items=filter==='all'?ALL:ALL.filter(s=>s.cat===filter);
+
+  // localStorage 저장
+  S.set('ORACLE_MACRO',JSON.stringify(ALL));
+  S.set('ORACLE_MACRO_TS',String(Date.now()));
+  return items;
+}
+
+// ═══════════════════════════════════════════
+// 초기화
+// ═══════════════════════════════════════════
+updateKisBadge();
+renderFilters();
+</script>
+</body>
+</html>
