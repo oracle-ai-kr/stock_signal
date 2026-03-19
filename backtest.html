@@ -1,0 +1,2114 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#080c12">
+<title>BACKTEST LAB</title>
+<style>
+:root {
+  --bg:#080c12; --surface:#0d1420; --surface2:#111a28;
+  --border:#1a2535; --border2:#243040;
+  --green:#00d4a0; --red:#ff4060; --yellow:#ffc040;
+  --blue:#4488ff; --orange:#ff8c40; --gold:#FFD700;
+  --purple:#a855f7; --cyan:#22d3ee;
+  --text:#c0d0e0; --muted:#506070; --muted2:#38485a;
+  --mono:'Courier New',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'Noto Sans KR',sans-serif;
+  font-size:14px;display:flex;flex-direction:column;
+}
+.header{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:10px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;
+}
+.header h1{font-size:15px;font-weight:700;color:var(--gold);font-family:var(--mono);}
+.header .sub{font-size:10px;color:var(--muted);font-family:var(--mono);}
+.clock{margin-left:auto;font-size:11px;color:var(--muted);font-family:var(--mono);}
+.config-panel{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:12px 16px;flex-shrink:0;overflow-y:auto;
+}
+.config-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+.config-row:last-child{margin-bottom:0;}
+.config-label{font-size:11px;color:var(--muted);font-family:var(--mono);min-width:55px;}
+.config-input{
+  background:var(--surface2);border:1px solid var(--border);
+  color:var(--text);border-radius:6px;padding:6px 10px;
+  font-size:13px;font-family:var(--mono);outline:none;transition:border-color .2s;
+}
+.config-input:focus{border-color:var(--gold);}
+.config-input.wide{flex:1;min-width:100px;}
+select.config-input{cursor:pointer;}
+.chip-group{display:flex;gap:4px;flex-wrap:wrap;}
+.chip{
+  padding:4px 12px;border-radius:20px;font-size:11px;
+  background:var(--surface2);border:1px solid var(--border);
+  color:var(--muted);cursor:pointer;transition:all .2s;
+  font-family:var(--mono);white-space:nowrap;
+}
+.chip.active{background:var(--gold);color:#000;border-color:var(--gold);font-weight:700;}
+.chip:hover{border-color:var(--gold);}
+.btn-run{
+  background:linear-gradient(135deg,var(--gold),#e6a800);
+  color:#000;border:none;border-radius:8px;
+  padding:8px 20px;font-size:13px;font-weight:700;
+  cursor:pointer;font-family:var(--mono);transition:all .2s;white-space:nowrap;
+}
+.btn-run:hover{transform:scale(1.03);box-shadow:0 0 12px rgba(255,215,0,.3);}
+.btn-run:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none;}
+.result-area{flex:1;overflow-y:auto;padding:12px 16px;-webkit-overflow-scrolling:touch;}
+.progress-wrap{margin-bottom:12px;display:none;}
+.progress-bar{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;}
+.progress-fill{height:100%;background:var(--gold);width:0%;transition:width .15s;border-radius:3px;}
+.progress-text{font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:4px;}
+.summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:16px;}
+.summary-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;}
+.summary-card .label{font-size:10px;color:var(--muted);font-family:var(--mono);margin-bottom:4px;}
+.summary-card .value{font-size:20px;font-weight:700;font-family:var(--mono);}
+.summary-card .sub{font-size:10px;color:var(--muted);margin-top:2px;}
+.period-tabs{display:flex;gap:4px;margin-bottom:8px;}
+.period-tab{
+  padding:5px 14px;border-radius:16px;font-size:11px;
+  background:var(--surface2);border:1px solid var(--border);
+  color:var(--muted);cursor:pointer;font-family:var(--mono);transition:all .2s;
+}
+.period-tab.active{background:var(--cyan);color:#000;border-color:var(--cyan);font-weight:700;}
+.detail-table{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mono);}
+.detail-table th{text-align:left;padding:8px 6px;color:var(--muted);border-bottom:1px solid var(--border);font-weight:500;font-size:10px;}
+.detail-table td{padding:7px 6px;border-bottom:1px solid var(--border2);white-space:nowrap;}
+.detail-table tr:hover{background:var(--surface2);}
+.compare-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;margin-bottom:16px;}
+.compare-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;}
+.compare-card .mode-title{font-size:13px;font-weight:700;margin-bottom:10px;font-family:var(--mono);}
+.compare-card .stat-row{display:flex;justify-content:space-between;font-size:11px;padding:4px 0;border-bottom:1px solid var(--border2);font-family:var(--mono);}
+.compare-card .stat-row .stat-label{color:var(--muted);}
+.chart-area{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px;}
+.chart-title{font-size:12px;color:var(--muted);font-family:var(--mono);margin-bottom:10px;}
+.dist-bar-wrap{display:flex;align-items:center;gap:6px;margin-bottom:3px;font-size:10px;font-family:var(--mono);}
+.dist-label{width:55px;text-align:right;color:var(--muted);}
+.dist-bar{height:14px;border-radius:3px;transition:width .3s;min-width:2px;}
+.dist-count{width:30px;color:var(--muted);}
+.signal-log{margin-top:12px;}
+.signal-log-toggle{
+  font-size:12px;color:var(--muted);font-family:var(--mono);
+  margin-bottom:8px;cursor:pointer;padding:6px 0;
+}
+.signal-log-toggle:hover{color:var(--gold);}
+.log-item{
+  display:grid;grid-template-columns:80px 48px 55px 55px 55px 1fr;
+  gap:4px;padding:5px 6px;font-size:10px;font-family:var(--mono);
+  border-bottom:1px solid var(--border2);align-items:center;
+}
+.log-item.header{color:var(--muted);font-weight:600;position:sticky;top:0;background:var(--bg);}
+#toast{
+  position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:#222;color:#fff;padding:8px 20px;border-radius:20px;
+  font-size:12px;opacity:0;transition:all .3s;pointer-events:none;z-index:999;font-family:var(--mono);
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.c-green{color:var(--green);}.c-red{color:var(--red);}.c-yellow{color:var(--yellow);}
+.c-gold{color:var(--gold);}.c-cyan{color:var(--cyan);}.c-muted{color:var(--muted);}
+.empty-state{text-align:center;padding:60px 20px;color:var(--muted);}
+.empty-state .icon{font-size:48px;margin-bottom:12px;}
+.empty-state .title{font-size:14px;color:var(--text);margin-bottom:6px;}
+.empty-state .desc{font-size:11px;line-height:1.6;}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+@media(max-width:480px){
+  .config-row{gap:6px;}
+  .summary-grid{grid-template-columns:repeat(2,1fr);}
+  .log-item{grid-template-columns:70px 42px 48px 48px 48px 1fr;font-size:9px;}
+  .compare-grid{grid-template-columns:1fr;}
+}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="header">
+  <h1>📊 BACKTEST LAB</h1>
+  <span class="sub">스코어링 백테스트</span>
+  <span class="clock" id="clock">00:00:00</span>
+</div>
+<div class="config-panel" id="configPanel">
+  <div class="config-row">
+    <span class="config-label">자산</span>
+    <div class="chip-group" id="assetType">
+      <div class="chip active" data-val="coin" onclick="setAsset('coin')">🪙 코인</div>
+      <div class="chip" data-val="stock_kr" onclick="setAsset('stock_kr')">🇰🇷 국내주식</div>
+      <div class="chip" data-val="stock_us" onclick="setAsset('stock_us')">🇺🇸 해외주식</div>
+    </div>
+  </div>
+  <div class="config-row">
+    <span class="config-label">종목</span>
+    <input type="text" class="config-input wide" id="symbolInput" placeholder="KRW-BTC / 005930 / AAPL" value="KRW-BTC">
+    <select class="config-input" id="tfSelect">
+      <option value="1d">일봉</option>
+      <option value="1w">주봉</option>
+    </select>
+  </div>
+  <div class="config-row">
+    <span class="config-label">모드</span>
+    <div class="chip-group" id="modeGroup">
+      <div class="chip" data-val="aggressive" onclick="setMode('aggressive')">🔥 공격적</div>
+      <div class="chip active" data-val="swing" onclick="setMode('swing')">⚖️ 스윙</div>
+      <div class="chip" data-val="conservative" onclick="setMode('conservative')">🛡️ 보수적</div>
+    </div>
+  </div>
+  <div class="config-row">
+    <span class="config-label">BUY_TH</span>
+    <input type="number" class="config-input" id="buyThInput" value="62" min="50" max="80" step="1" style="width:56px;">
+    <span class="config-label" style="min-width:45px;">SELL_TH</span>
+    <input type="number" class="config-input" id="sellThInput" value="38" min="20" max="50" step="1" style="width:56px;">
+    <span class="config-label" style="min-width:45px;">윈도우</span>
+    <input type="number" class="config-input" id="windowInput" value="100" min="50" max="200" step="10" style="width:56px;">
+  </div>
+  <div class="config-row" style="justify-content:space-between;">
+    <label style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px;cursor:pointer;">
+      <input type="checkbox" id="compareMode"> 3모드 비교 실행
+    </label>
+    <button class="btn-run" id="btnRun" onclick="runBacktest()">▶ 백테스트 실행</button>
+  </div>
+</div>
+<div class="result-area" id="resultArea">
+  <div class="empty-state" id="emptyState">
+    <div class="icon">🧪</div>
+    <div class="title">백테스트를 실행해보세요</div>
+    <div class="desc">
+      종목을 입력하고 실행 버튼을 누르면<br>
+      과거 데이터로 스코어링 정확도를 검증합니다.<br><br>
+      <span style="color:var(--gold);">코인:</span> 업비트(KRW-BTC) / 바이낸스 폴백<br>
+      <span style="color:var(--cyan);">주식:</span> Yahoo Finance (국내 6자리코드 / 해외 티커)<br><br>
+      <span style="color:var(--muted);">윈도우 = 스코어링에 사용할 최소 캔들 수</span>
+    </div>
+  </div>
+  <div class="progress-wrap" id="progressWrap">
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="progress-text" id="progressText">준비 중...</div>
+  </div>
+  <div id="resultContent"></div>
+</div>
+<div id="toast"></div>
+
+<script>
+'use strict';
+// ═══ INDICATORS MODULE START ═══
+// ════════════════════════════════════════════════════════════
+// indicators.js — 기술 지표 공통 라이브러리
+// 모든 모듈(analyzer, supervisor, recommender 등)에서 공유
+// 순수 함수만 — DOM 없음, 사이드이펙트 없음
+// ════════════════════════════════════════════════════════════
+
+// ── 공통 유틸 ─────────────────────────────────────────────
+const Utils = {
+  clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); },
+
+  ema(arr, period) {
+    const k = 2 / (period + 1);
+    let prev = arr[0];
+    return arr.map((v, i) => i === 0 ? prev : (prev = v * k + prev * (1 - k)));
+  },
+
+  sma(arr, period) {
+    const out = new Array(arr.length).fill(null);
+    for (let i = period - 1; i < arr.length; i++) {
+      let s = 0;
+      for (let j = i - period + 1; j <= i; j++) s += arr[j];
+      out[i] = s / period;
+    }
+    return out;
+  },
+
+  fmtPrice(n) {
+    if (!isFinite(n)) return '-';
+    if (n >= 1000) return Math.round(n).toLocaleString('ko-KR') + '원';
+    return n.toFixed(n < 1 ? 4 : 2) + '원';
+  },
+
+  fmtPct(n, d = 1) {
+    if (!isFinite(n)) return '-';
+    return (n >= 0 ? '+' : '') + n.toFixed(d) + '%';
+  },
+};
+
+// ════════════════════════════════════════════════════════════
+// 1. RSI — 상대강도지수
+// ════════════════════════════════════════════════════════════
+const RSI = {
+  /**
+   * RSI 배열 계산
+   * @param {number[]} closes
+   * @param {number} period
+   * @returns {number[]} RSI 배열 (null 포함)
+   */
+  calc(closes, period = 14) {
+    let g = 0, l = 0;
+    for (let i = 1; i <= period; i++) {
+      const d = closes[i] - closes[i - 1];
+      if (d >= 0) g += d; else l -= d;
+    }
+    g /= period; l /= period;
+    const out = new Array(closes.length).fill(null);
+    out[period] = 100 - 100 / (1 + (l === 0 ? 1e9 : g / l));
+    for (let i = period + 1; i < closes.length; i++) {
+      const d = closes[i] - closes[i - 1];
+      g = (g * (period - 1) + Math.max(d, 0)) / period;
+      l = (l * (period - 1) + Math.max(-d, 0)) / period;
+      out[i] = 100 - 100 / (1 + (l === 0 ? 1e9 : g / l));
+    }
+    return out;
+  },
+
+  /** 현재값 기준 신호 */
+  signal(val) {
+    if (val < 20) return { type: 'buy',  label: 'RSI 극과매도', strength: 'strong' };
+    if (val < 30) return { type: 'buy',  label: 'RSI 과매도', strength: 'strong' };
+    if (val < 35) return { type: 'buy',  label: 'RSI 매수권', strength: 'weak' };
+    if (val > 80) return { type: 'sell', label: 'RSI 극과매수', strength: 'strong' };
+    if (val > 75) return { type: 'sell', label: 'RSI 과매수', strength: 'strong' };
+    if (val > 65) return { type: 'sell', label: 'RSI 매도권', strength: 'weak' };
+    return       { type: 'neutral', label: 'RSI 중립', strength: 'none' };
+  },
+
+  /** 다이버전스 감지 — 과매도/과매수 구간에서만 유효 (오탐 방지) */
+  divergence(closes, rsiArr, lookback = 20) {
+    const last   = closes.length - 1;
+    const prev   = Math.max(0, last - lookback);
+    const rsiNow = rsiArr[last] ?? 50;
+    const rsiOld = rsiArr[prev] ?? 50;
+    // 과매도/과매수 영역이 아니면 다이버전스 무효
+    if (rsiNow > 40 && rsiNow < 60) return 'none';
+    const priceUp = closes[last] > closes[prev];
+    const rsiUp   = rsiNow > rsiOld;
+    // 추가 조건: 가격 변화가 충분히 있어야 함 (노이즈 제거)
+    const pricePct = Math.abs((closes[last] - closes[prev]) / closes[prev] * 100);
+    if (pricePct < 1.0) return 'none';
+    if (priceUp && !rsiUp && rsiNow > 60) return 'bearish'; // 가격↑ RSI↓ 과매수권
+    if (!priceUp && rsiUp && rsiNow < 40) return 'bullish'; // 가격↓ RSI↑ 과매도권
+    return 'none';
+  },
+};
+
+// ════════════════════════════════════════════════════════════
+// 2. MACD — 이동평균 수렴·발산
+// ════════════════════════════════════════════════════════════
+const MACD = {
+  /**
+   * MACD 계산
+   * @returns {{ line, sig, hist }} 각각 배열
+   */
+  calc(closes, fast = 12, slow = 26, signal = 9) {
+    const ef   = Utils.ema(closes, fast);
+    const es   = Utils.ema(closes, slow);
+    const line = ef.map((v, i) => v - es[i]);
+    const sig  = Utils.ema(line, signal);
+    const hist = line.map((v, i) => v - sig[i]);
+    return { line, sig, hist };
+  },
+
+  /** 현재 히스토그램 기준 신호 */
+  signal(hist, prev) {
+    if (hist > 0 && prev <= 0) return { type: 'buy',  label: 'MACD 골든크로스', strength: 'strong' };
+    if (hist < 0 && prev >= 0) return { type: 'sell', label: 'MACD 데드크로스', strength: 'strong' };
+    if (hist > 0)              return { type: 'buy',  label: 'MACD 양전',       strength: 'weak' };
+    if (hist < 0)              return { type: 'sell', label: 'MACD 음전',       strength: 'weak' };
+    return                            { type: 'neutral', label: 'MACD 중립',    strength: 'none' };
+  },
+};
+
+// ════════════════════════════════════════════════════════════
+// 3. Stochastic — 스토캐스틱
+// ════════════════════════════════════════════════════════════
+const Stochastic = {
+  /**
+   * @returns {{ k, d }}
+   */
+  calc(rows, kPeriod = 14, dPeriod = 3) {
+    const kArr = [];
+    for (let i = kPeriod - 1; i < rows.length; i++) {
+      const sl = rows.slice(i - kPeriod + 1, i + 1);
+      const hh = Math.max(...sl.map(r => r.h));
+      const ll = Math.min(...sl.map(r => r.l));
+      kArr.push(hh === ll ? 50 : ((rows[i].c - ll) / (hh - ll)) * 100);
+    }
+    let dSum = 0;
+    for (let i = kArr.length - dPeriod; i < kArr.length; i++) dSum += kArr[i];
+    return { k: kArr[kArr.length - 1], d: dSum / dPeriod };
+  },
+
+  signal(k, d) {
+    if (k < 20)              return { type: 'buy',  label: 'Stoch 과매도', strength: 'strong' };
+    if (k < 40)              return { type: 'buy',  label: 'Stoch 중립하단', strength: 'weak' };
+    if (k > 80)              return { type: 'sell', label: 'Stoch 과매수', strength: 'strong' };
+    if (k > 60)              return { type: 'sell', label: 'Stoch 중립상단', strength: 'weak' };
+    if (k > d)               return { type: 'buy',  label: 'Stoch %K>%D',  strength: 'weak' };
+    return                          { type: 'neutral', label: 'Stoch 중립', strength: 'none' };
+  },
+};
+
+// ════════════════════════════════════════════════════════════
+// 4. CCI — 상품 채널 지수
+// ════════════════════════════════════════════════════════════
+const CCI = {
+  calc(rows, period = 20) {
+    const tp  = rows.map(r => (r.h + r.l + r.c) / 3);
+    const res = [];
+    for (let i = period - 1; i < tp.length; i++) {
+      const sl   = tp.slice(i - period + 1, i + 1);
+      const mean = sl.reduce((a, b) => a + b) / period;
+      const md   = sl.reduce((a, b) => a + Math.abs(b - mean), 0) / period;
+      res.push(md === 0 ? 0 : (tp[i] - mean) / (0.015 * md));
+    }
+    return res[res.length - 1];
+  },
+
+  signal(val) {
+    if (val < -100) return { type: 'buy',  label: 'CCI 과매도', strength: 'strong' };
+    if (val < 0)    return { type: 'buy',  label: 'CCI 중립하단', strength: 'weak' };
+    if (val > 100)  return { type: 'sell', label: 'CCI 과매수', strength: 'strong' };
+    if (val > 0)    return { type: 'sell', label: 'CCI 중립상단', strength: 'weak' };
+    return                 { type: 'neutral', label: 'CCI 중립', strength: 'none' };
+  },
+};
+
+// ════════════════════════════════════════════════════════════
+// 5. ADX — 평균 방향성 지수
+// ════════════════════════════════════════════════════════════
+const ADX = {
+  calc(rows, period = 14) {
+    const trArr = [], plusDM = [], minusDM = [];
+    for (let i = 1; i < rows.length; i++) {
+      const c = rows[i], p = rows[i - 1];
+      trArr.push(Math.max(c.h - c.l, Math.abs(c.h - p.c), Math.abs(c.l - p.c)));
+      const up = c.h - p.h, dn = p.l - c.l;
+      plusDM.push(up > dn && up > 0 ? up : 0);
+      minusDM.push(dn > up && dn > 0 ? dn : 0);
+    }
+    const sTR  = Utils.ema(trArr, period);
+    const sPDM = Utils.ema(plusDM, period);
+    const sMDM = Utils.ema(minusDM, period);
+    const dxArr = [];
+    for (let i = 0; i < sTR.length; i++) {
+      const st = sTR[i];
+      if (!st) continue;
+      const pdi = (sPDM[i] / st) * 100;
+      const mdi = (sMDM[i] / st) * 100;
+      const sum = pdi + mdi;
+      dxArr.push({ dx: sum ? Math.abs(pdi - mdi) / sum * 100 : 0, pdi, mdi });
+    }
+    const dxVals = dxArr.map(d => d.dx);
+    const adxArr = Utils.sma(dxVals, period);
+    const last   = dxArr.length - 1;
+    return {
+      adx: adxArr[last] ?? 0,
+      pdi: dxArr[last]?.pdi ?? 0,
+      mdi: dxArr[last]?.mdi ?? 0,
+    };
+  },
+
+  signal(adx, pdi, mdi) {
+    if (adx < 20)            return { type: 'neutral', label: 'ADX 추세없음', strength: 'none' };
+    if (adx >= 25 && pdi > mdi) return { type: 'buy',  label: 'ADX 상승추세', strength: adx > 40 ? 'strong' : 'weak' };
+    if (adx >= 25 && mdi > pdi) return { type: 'sell', label: 'ADX 하락추세', strength: adx > 40 ? 'strong' : 'weak' };
+    return                          { type: 'neutral', label: 'ADX 약추세',   strength: 'none' };
+  },
+};
+
+// ════════════════════════════════════════════════════════════
+// 6. OBV — 누적 거래량
+// ════════════════════════════════════════════════════════════
+const OBV = {
+  calc(rows) {
+    let val = 0;
+    const arr = [0];
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i].c > rows[i - 1].c)      val += rows[i].v;
+      else if (rows[i].c < rows[i - 1].c) val -= rows[i].v;
+      arr.push(val);
+    }
+    const sig = Utils.ema(arr, 20);
+    return { val: arr[arr.length - 1], sig: sig[sig.length - 1] };
+  },
+
+  signal(val, sig) {
+    if (val > sig) return { type: 'buy',  label: 'OBV 매수우위', strength: 'weak' };
+    if (val < sig) return { type: 'sell', label: 'OBV 매도우위', strength: 'weak' };
+    return                { type: 'neutral', label: 'OBV 중립', strength: 'none' };
+  },
+
+  /** OBV 다이버전스 — 추세 명확 + 충분한 가격 변화일 때만 유효 (오탐 방지) */
+  divergence(rows, lookback = 20) {
+    const last = rows.length - 1;
+    const prev = Math.max(0, last - lookback);
+    let obvL = 0, obvP = 0, run = 0;
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i].c > rows[i - 1].c)      run += rows[i].v;
+      else if (rows[i].c < rows[i - 1].c) run -= rows[i].v;
+      if (i === prev) obvP = run;
+      if (i === last) obvL = run;
+    }
+    const priceNow = rows[last].c;
+    const pricePrev = rows[prev].c;
+    // 가격 변화 1.5% 이상일 때만 유효 (횡보 구간 오탐 방지)
+    const pricePct = Math.abs((priceNow - pricePrev) / pricePrev * 100);
+    if (pricePct < 1.5) return 'none';
+    const priceUp = priceNow > pricePrev;
+    const obvUp   = obvL > obvP;
+    // OBV 변화도 충분해야 함 (미미한 변화 제외)
+    const obvChgPct = obvP !== 0 ? Math.abs((obvL - obvP) / Math.abs(obvP) * 100) : 0;
+    if (obvChgPct < 5) return 'none';
+    if (priceUp && !obvUp)  return 'bearish';
+    if (!priceUp && obvUp)  return 'bullish';
+    return 'none';
+  },
+};
+
+// ════════════════════════════════════════════════════════════
+// 7. VolumeOSC — 거래량 오실레이터
+// ════════════════════════════════════════════════════════════
+const VolumeOSC = {
+  calc(rows, fast = 5, slow = 20) {
+    const vols = rows.map(r => r.v);
+    const fv   = vols.slice(-fast).reduce((a, b) => a + b) / fast;
+    const sv   = vols.slice(-slow).reduce((a, b) => a + b) / slow;
+    return sv ? ((fv - sv) / sv) * 100 : 0;
+  },
+
+  signal(val) {
+    if (val > 20)  return { type: 'buy',  label: '거래량 급증', strength: 'strong' };
+    if (val > 0)   return { type: 'buy',  label: '거래량 증가', strength: 'weak' };
+    if (val < -20) return { type: 'sell', label: '거래량 급감', strength: 'strong' };
+    if (val < 0)   return { type: 'sell', label: '거래량 감소', strength: 'weak' };
+    return                { type: 'neutral', label: '거래량 중립', strength: 'none' };
+  },
+};
+
+// ════════════════════════════════════════════════════════════
+// 8. BollingerBands — 볼린저 밴드
+// ════════════════════════════════════════════════════════════
+const BollingerBands = {
+  calc(closes, period = 20, mult = 2) {
+    const sl  = closes.slice(-period);
+    const mid = sl.reduce((a, b) => a + b) / period;
+    const std = Math.sqrt(sl.reduce((a, b) => a + (b - mid) ** 2) / period);
+    return { upper: mid + mult * std, mid, lower: mid - mult * std };
+  },
+
+  signal(price, bb) {
+    if (price <= bb.lower) return { type: 'buy',  label: 'BB 하단터치', strength: 'strong' };
+    if (price >= bb.upper) return { type: 'sell', label: 'BB 상단터치', strength: 'strong' };
+    if (price < bb.mid)    return { type: 'buy',  label: 'BB 중하단',   strength: 'weak' };
+    if (price > bb.mid)    return { type: 'sell', label: 'BB 중상단',   strength: 'weak' };
+    return                        { type: 'neutral', label: 'BB 중앙',  strength: 'none' };
+  },
+
+  /** 볼린저 스퀴즈 감지 (밴드 수축 → 큰 변동 임박) */
+  squeeze(closes, period = 20, lookback = 5) {
+    const bands = [];
+    for (let i = period - 1; i < closes.length; i++) {
+      const sl  = closes.slice(i - period + 1, i + 1);
+      const mid = sl.reduce((a, b) => a + b) / period;
+      const std = Math.sqrt(sl.reduce((a, b) => a + (b - mid) ** 2) / period);
+      bands.push((std / mid) * 100);
+    }
+    const last = bands[bands.length - 1];
+    const avg  = bands.slice(-lookback - 1, -1).reduce((a, b) => a + b) / lookback;
+    return { width: last, squeeze: last < avg * 0.85 };
+  },
+};
+
+// ════════════════════════════════════════════════════════════
+// 9. MA — 이동평균 배열
+// ════════════════════════════════════════════════════════════
+const MA = {
+  sma(closes, period) {
+    let s = 0;
+    for (let i = closes.length - period; i < closes.length; i++) s += closes[i];
+    return s / period;
+  },
+
+  /** MA 5/20/60/120 배열 상태 — 데이터 부족 시 가능한 MA만 사용 */
+  alignment(closes) {
+    const n     = closes.length;
+    const price = closes[n - 1];
+    const ma5   = n >= 5   ? this.sma(closes, 5)   : price;
+    const ma20  = n >= 20  ? this.sma(closes, 20)  : price;
+    const ma60  = n >= 60  ? this.sma(closes, 60)  : null;
+    const ma120 = n >= 120 ? this.sma(closes, 120) : null;
+    // 데이터 충분한 MA만으로 배열 판단
+    const hasMA60  = ma60  !== null;
+    const hasMA120 = ma120 !== null;
+    const bullish = n >= 60
+      ? price > ma5 && ma5 > ma20 && ma20 > ma60
+      : price > ma5 && ma5 > ma20; // MA60 없으면 단기 배열만
+    const bearish = price < ma5 && ma5 < ma20;
+    // 신뢰도 표시용 플래그
+    const partial = !hasMA60 || !hasMA120;
+    return { price, ma5, ma20, ma60, ma120, bullish, bearish, partial, hasMA60, hasMA120 };
+  },
+
+  signal(align) {
+    const sfx = align.partial ? ' (단기)' : '';
+    if (align.bullish) return { type: 'buy',  label: `MA 정배열${sfx}`, strength: align.partial ? 'weak' : 'strong' };
+    if (align.bearish) return { type: 'sell', label: `MA 역배열${sfx}`, strength: align.partial ? 'weak' : 'strong' };
+    return                    { type: 'neutral', label: 'MA 혼재', strength: 'none' };
+  },
+};
+
+// ════════════════════════════════════════════════════════════
+// 10. Trend — 추세 분석
+// ════════════════════════════════════════════════════════════
+const Trend = {
+  /** 추세 방향 + 기울기 (선형 회귀) */
+  calc(closes, N = 20) {
+    const i  = closes.length - 1;
+    const s  = Math.max(0, i - N);
+    const c0 = closes[s], c1 = closes[i];
+    const trendPct = c0 ? ((c1 - c0) / c0) * 100 : 0;
+
+    // 선형 회귀 기울기
+    const n = i - s + 1;
+    let sx = 0, sy = 0, sxx = 0, sxy = 0;
+    for (let k = 0; k < n; k++) {
+      const y = closes[s + k];
+      sx += k; sy += y; sxx += k * k; sxy += k * y;
+    }
+    const denom = (n * sxx - sx * sx) || 1;
+    const b     = (n * sxy - sx * sy) / denom;
+    const slope = c1 ? (b / c1) * 100 : 0; // % per bar
+
+    return { trendPct, slope };
+  },
+
+  /** 가격 구조 위치 (0 = 바닥, 1 = 천장) */
+  structure(rows, N = 20) {
+    const sub = rows.slice(Math.max(0, rows.length - N));
+    const lo  = Math.min(...sub.map(r => r.l));
+    const hi  = Math.max(...sub.map(r => r.h));
+    const c1  = rows[rows.length - 1].c;
+    const pos = Utils.clamp((c1 - lo) / ((hi - lo) || 1), 0, 1);
+    return {
+      pos,
+      nearSupport:    pos <= 0.18,
+      nearResistance: pos >= 0.82,
+    };
+  },
+
+  /** 지지/저항 레벨 (스윙 고저점 기반) */
+  levels(rows, lookback = 50) {
+    const sub = rows.slice(Math.max(0, rows.length - lookback));
+    const supports = [], resistances = [];
+    for (let i = 2; i < sub.length - 2; i++) {
+      if (sub[i].l < sub[i-1].l && sub[i].l < sub[i-2].l &&
+          sub[i].l < sub[i+1].l && sub[i].l < sub[i+2].l)
+        supports.push(sub[i].l);
+      if (sub[i].h > sub[i-1].h && sub[i].h > sub[i-2].h &&
+          sub[i].h > sub[i+1].h && sub[i].h > sub[i+2].h)
+        resistances.push(sub[i].h);
+    }
+    const price  = rows[rows.length - 1].c;
+    const nearS  = supports.filter(v => v < price).sort((a, b) => b - a)[0] ?? null;
+    const nearR  = resistances.filter(v => v > price).sort((a, b) => a - b)[0] ?? null;
+    return { supports, resistances, nearSupport: nearS, nearResistance: nearR };
+  },
+
+  /** 피보나치 되돌림 레벨 */
+  fibonacci(rows, lookback = 50) {
+    const sub  = rows.slice(Math.max(0, rows.length - lookback));
+    const high = Math.max(...sub.map(r => r.h));
+    const low  = Math.min(...sub.map(r => r.l));
+    const diff = high - low;
+    return {
+      high, low,
+      r236: high - diff * 0.236,
+      r382: high - diff * 0.382,
+      r500: high - diff * 0.500,
+      r618: high - diff * 0.618,
+      r786: high - diff * 0.786,
+    };
+  },
+
+  signal(trendPct, slope) {
+    if (trendPct > 3 && slope > 0.05)  return { type: 'buy',  label: '강한 상승추세', strength: 'strong' };
+    if (trendPct > 0 && slope > 0)     return { type: 'buy',  label: '상승추세',      strength: 'weak' };
+    if (trendPct < -3 && slope < -0.05)return { type: 'sell', label: '강한 하락추세', strength: 'strong' };
+    if (trendPct < 0 && slope < 0)     return { type: 'sell', label: '하락추세',      strength: 'weak' };
+    return                                    { type: 'neutral', label: '횡보',        strength: 'none' };
+  },
+};
+
+// ════════════════════════════════════════════════════════════
+// 11. ATR — 평균 진폭 (변동성)
+// ════════════════════════════════════════════════════════════
+const ATR = {
+  calc(rows, period = 14) {
+    const trs = [];
+    for (let i = Math.max(1, rows.length - period * 2); i < rows.length; i++) {
+      const c = rows[i], p = rows[i - 1];
+      trs.push(Math.max(c.h - c.l, Math.abs(c.h - p.c), Math.abs(c.l - p.c)));
+    }
+    const val = trs.slice(-period).reduce((a, b) => a + b, 0) / period;
+    const lastClose = rows[rows.length - 1].c;
+    return { val, pct: lastClose ? (val / lastClose) * 100 : 0 };
+  },
+
+  /** 변동성 스무딩 (급변 구간 과민 반응 완화) */
+  soften(pct, key, cache) {
+    const v = (isFinite(pct) && pct > 0) ? pct : 1.5;
+    const prev = cache[key];
+    const alpha = 0.65;
+    let out = prev == null ? v : alpha * v + (1 - alpha) * prev;
+    if (prev != null) {
+      const d = out - prev;
+      if (d >  0.7) out = prev + 0.7;
+      if (d < -0.7) out = prev - 0.7;
+    }
+    out = Utils.clamp(out, 0.2, 12.0);
+    cache[key] = out;
+    return out;
+  },
+
+  signal(pct) {
+    if (pct < 1.0) return { type: 'buy',  label: '변동성 낮음',  strength: 'weak' };
+    if (pct < 3.0) return { type: 'neutral', label: '변동성 보통', strength: 'none' };
+    if (pct < 5.0) return { type: 'sell', label: '변동성 높음',  strength: 'weak' };
+    return                { type: 'sell', label: '변동성 극단',  strength: 'strong' };
+  },
+};
+
+// ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════
+// 12. Candle — 캔들 패턴 감지
+// ════════════════════════════════════════════════════════════
+const Candle = {
+  _parse(c) {
+    const body  = Math.abs(c.c - c.o);
+    const upper = c.h - Math.max(c.c, c.o);
+    const lower = Math.min(c.c, c.o) - c.l;
+    const range = c.h - c.l || 1;
+    const bull  = c.c >= c.o;
+    return { body, upper, lower, range, bull };
+  },
+  isHammer(c) {
+    const { body, upper, lower, range } = this._parse(c);
+    return lower >= body * 2 && upper <= body * 0.3 && body >= range * 0.1;
+  },
+  isInvHammer(c) {
+    const { body, upper, lower, range } = this._parse(c);
+    return upper >= body * 2 && lower <= body * 0.3 && body >= range * 0.1;
+  },
+  isPinBar(c) {
+    const { body, upper, lower, range } = this._parse(c);
+    const tail = Math.max(upper, lower);
+    return tail >= range * 0.6 && body <= range * 0.3;
+  },
+  isDoji(c) {
+    const { body, range } = this._parse(c);
+    return body <= range * 0.1;
+  },
+  isBullEngulfing(prev, curr) {
+    if (!prev || !curr) return false;
+    const p = this._parse(prev), c = this._parse(curr);
+    return !p.bull && c.bull && curr.c > prev.o && curr.o < prev.c;
+  },
+  isBearEngulfing(prev, curr) {
+    if (!prev || !curr) return false;
+    const p = this._parse(prev), c = this._parse(curr);
+    return p.bull && !c.bull && curr.c < prev.o && curr.o > prev.c;
+  },
+  isMorningStar(rows, i) {
+    if (i < 2) return false;
+    const [a, b, c] = [rows[i-2], rows[i-1], rows[i]];
+    const pa = this._parse(a), pb = this._parse(b), pc = this._parse(c);
+    return !pa.bull && pb.body <= pa.body * 0.3 && pc.bull && c.c >= (a.o + a.c) / 2;
+  },
+  isEveningStar(rows, i) {
+    if (i < 2) return false;
+    const [a, b, c] = [rows[i-2], rows[i-1], rows[i]];
+    const pa = this._parse(a), pb = this._parse(b), pc = this._parse(c);
+    return pa.bull && pb.body <= pa.body * 0.3 && !pc.bull && c.c <= (a.o + a.c) / 2;
+  },
+  analyze(rows) {
+    const last = rows.length - 1;
+    const c0 = rows[last], c1 = rows[last-1] || null;
+    const patterns = [];
+    let score = 0;
+    if (this.isHammer(c0))     { patterns.push({ name:'망치형',           type:'buy',     score:8  }); score += 8; }
+    if (this.isInvHammer(c0))  { patterns.push({ name:'역망치형',         type:'buy',     score:5  }); score += 5; }
+    if (this.isPinBar(c0)) {
+      const p = this._parse(c0), t = p.lower > p.upper ? 'buy' : 'sell', s = t==='buy'?5:-5;
+      patterns.push({ name:'핀바', type:t, score:s }); score += s;
+    }
+    if (this.isDoji(c0))       { patterns.push({ name:'도지',             type:'neutral', score:0  }); }
+    if (c1) {
+      if (this.isBullEngulfing(c1,c0)) { patterns.push({ name:'불리시 장악형',   type:'buy',  score:10 }); score += 10; }
+      if (this.isBearEngulfing(c1,c0)) { patterns.push({ name:'베어리시 장악형', type:'sell', score:-10}); score -= 10; }
+    }
+    if (this.isMorningStar(rows,last)) { patterns.push({ name:'모닝스타',         type:'buy',  score:12 }); score += 12; }
+    if (this.isEveningStar(rows,last)) { patterns.push({ name:'이브닝스타',       type:'sell', score:-12}); score -= 12; }
+    return {
+      patterns,
+      score,
+      bullish: score > 0,
+      bearish: score < 0,
+      strongest: [...patterns].sort((a,b)=>Math.abs(b.score)-Math.abs(a.score))[0] || null,
+    };
+  },
+};
+
+// ════════════════════════════════════════════════════════════
+// 13. VolPattern — 거래량 패턴 감지
+// ════════════════════════════════════════════════════════════
+const VolPattern = {
+  analyze(rows, lookback=10) {
+    const last = rows.length - 1;
+    const sub  = rows.slice(Math.max(0, last-lookback), last+1);
+    const vols = sub.map(r => r.v);
+    const avgVol   = vols.reduce((a,b)=>a+b,0) / vols.length;
+    const lastVol  = rows[last].v;
+    const lastClose= rows[last].c;
+    const prevClose= rows[last-1]?.c || lastClose;
+    const priceUp  = lastClose > prevClose;
+    const downBars = sub.filter(r => r.c < r.o);
+    const upBars   = sub.filter(r => r.c >= r.o);
+    const downAvgVol = downBars.length ? downBars.reduce((a,b)=>a+b.v,0)/downBars.length : 0;
+    const upAvgVol   = upBars.length   ? upBars.reduce((a,b)=>a+b.v,0)/upBars.length     : 0;
+    const recent5Avg = rows.slice(last-4, last+1).reduce((a,b)=>a+b.v,0) / 5;
+    const isVolBottom= recent5Avg < avgVol * 0.5;
+    const isVolSurge = lastVol > avgVol * 2.0;
+    let score = 0;
+    const patterns = [];
+    if (downAvgVol < avgVol*0.7 && downBars.length>=3) { patterns.push({name:'하락 거래량 감소',  type:'buy',  score:6});  score+=6; }
+    if (upAvgVol   > avgVol*1.3 && upBars.length>=3)   { patterns.push({name:'상승 거래량 증가',  type:'buy',  score:6});  score+=6; }
+    if (isVolBottom)                                     { patterns.push({name:'거래량 바닥권',     type:'buy',  score:4});  score+=4; }
+    if (isVolSurge && priceUp)                           { patterns.push({name:'거래량 급증+상승', type:'buy',  score:8});  score+=8; }
+    if (isVolSurge && !priceUp)                          { patterns.push({name:'거래량 급증+하락', type:'sell', score:-8}); score-=8; }
+    if (priceUp && lastVol < avgVol*0.6)                 { patterns.push({name:'상승+거래량 감소', type:'sell', score:-5}); score-=5; }
+    return {
+      patterns, score, isVolBottom, isVolSurge,
+      volRatio: avgVol ? lastVol/avgVol : 1,
+      bullish: score > 0, bearish: score < 0,
+    };
+  },
+  signal(vp) {
+    if (vp.score >= 8)  return { type:'buy',  label:'거래량 강한 매수', strength:'strong' };
+    if (vp.score >= 4)  return { type:'buy',  label:'거래량 매수',     strength:'weak' };
+    if (vp.score <= -8) return { type:'sell', label:'거래량 강한 매도', strength:'strong' };
+    if (vp.score <= -4) return { type:'sell', label:'거래량 매도',     strength:'weak' };
+    return                     { type:'neutral', label:'거래량 중립',   strength:'none' };
+  },
+};
+
+// ════════════════════════════════════════════════════════════
+// 14. PullbackScore — 눌림목/반등 구간 점수 (0~100)
+// ════════════════════════════════════════════════════════════
+const PullbackScore = {
+  calc(ind) {
+    let score = 0;
+    const reasons = [];
+    const pos = ind.trend.struct.pos;
+
+    // 1) 가격 구조 위치
+    if      (pos <= 0.20) { score += 25; reasons.push('가격 하단권'); }
+    else if (pos <= 0.35) { score += 15; reasons.push('가격 중하단권'); }
+    else if (pos >= 0.80) { score -= 15; reasons.push('가격 상단권 (과열)'); }
+
+    // 2) 피보나치 되돌림
+    const fib = ind.trend.fib;
+    const price = ind.price;
+    if (fib) {
+      const near = (target) => price >= target*0.99 && price <= target*1.01;
+      if      (near(fib.r618)) { score += 20; reasons.push('피보 61.8% 눌림'); }
+      else if (near(fib.r500)) { score += 15; reasons.push('피보 50% 눌림'); }
+      else if (near(fib.r382)) { score += 10; reasons.push('피보 38.2% 눌림'); }
+    }
+
+    // 3) RSI
+    const rsi = ind.rsi.val;
+    if      (rsi <= 30) { score += 20; reasons.push('RSI 과매도'); }
+    else if (rsi <= 40) { score += 12; reasons.push('RSI 저점권'); }
+    else if (rsi >= 70) { score -= 15; reasons.push('RSI 과매수'); }
+
+    // 4) BB 하단
+    if      (price <= ind.bb.lower)        { score += 18; reasons.push('BB 하단 터치'); }
+    else if (price <= ind.bb.lower * 1.02) { score += 10; reasons.push('BB 하단 근접'); }
+
+    // 5) 캔들 패턴
+    if (ind.candle) {
+      if (ind.candle.bullish) { score += Math.min(ind.candle.score, 12); reasons.push(`캔들: ${ind.candle.strongest?.name||''}`); }
+      if (ind.candle.bearish) { score -= Math.min(Math.abs(ind.candle.score), 12); }
+    }
+
+    // 6) 거래량 패턴
+    if (ind.volPattern) {
+      if (ind.volPattern.isVolBottom) { score += 8;  reasons.push('거래량 바닥권'); }
+      if (ind.volPattern.bullish)     { score += Math.min(ind.volPattern.score, 10); reasons.push('거래량 매수 패턴'); }
+      if (ind.volPattern.bearish)     { score -= Math.min(Math.abs(ind.volPattern.score), 10); }
+    }
+
+    // 7) 다이버전스
+    if (ind.rsi.div === 'bullish') { score += 15; reasons.push('RSI 상승 다이버전스'); }
+    if (ind.rsi.div === 'bearish') { score -= 10; }
+    if (ind.obv.div === 'bullish') { score += 12; reasons.push('OBV 상승 다이버전스'); }
+    if (ind.obv.div === 'bearish') { score -= 8; }
+
+    // 8) 지지/저항
+    if (ind.trend.struct.nearSupport)    { score += 10; reasons.push('지지선 근접'); }
+    if (ind.trend.struct.nearResistance) { score -= 10; }
+
+    // 9) BB 스퀴즈
+    if (ind.squeeze.squeeze) { score += 8; reasons.push('BB 스퀴즈'); }
+
+    score = Math.max(0, Math.min(100, Math.round(score)));
+    return {
+      score,
+      reasons,
+      grade: score>=70?'강한 눌림목':score>=50?'눌림목':score>=30?'약한 눌림목':'해당없음',
+    };
+  },
+};
+
+// ════════════════════════════════════════════════════════════
+// calcAll — 전체 지표 한번에 계산
+// 사용법: const ind = calcAll(rows);
+// ── 보조 모듈 sigs 표시 헬퍼 ──
+function pushAuxSigs(sigs, ind) {
+  if(ind.pullback&&ind.pullback.score>=40) sigs.push({type:'buy',label:`📐 눌림목 ${ind.pullback.score}점`,strength:ind.pullback.score>=60?'strong':'normal',val:`+${ind.pullback.score>=60?5:3}`});
+  if(ind.swingStruct&&ind.swingStruct.trend==='up') sigs.push({type:'buy',label:'📈 스윙 상승구조',strength:'normal',val:'+4'});
+  else if(ind.swingStruct&&ind.swingStruct.trend==='down') sigs.push({type:'sell',label:'📉 스윙 하락구조',strength:'normal',val:'-4'});
+}
+
+const ContextEngine = {
+
+  /**
+   * 맥락 규칙 적용 (30개 — v2 확장)
+   * @returns {{ bonus, rules }} bonus: -30~+30, rules: 감지된 규칙 목록
+   */
+  analyze(ind) {
+    const rules  = [];
+    let   bonus  = 0;
+
+    const add = (score, label, detail) => {
+      bonus += score;
+      rules.push({ score, label, detail, type: score > 0 ? 'buy' : score < 0 ? 'sell' : 'neutral' });
+    };
+
+    const rsi      = ind.rsi.val;
+    const macdHist = ind.macd.hist;
+    const macdPrev = ind.macd.arr.hist[ind.macd.arr.hist.length - 2] ?? macdHist;
+    const obvVal   = ind.obv.val;
+    const obvSig   = ind.obv.sig;
+    const volOsc   = ind.volOsc;
+    const pos      = ind.trend.struct.pos;
+    const trendPct = ind.trend.pct;
+    const slope    = ind.trend.slope;
+    const atrPct   = ind.atr.pct;
+    const price    = ind.price;
+    const bbLower  = ind.bb.lower;
+    const bbUpper  = ind.bb.upper;
+    const stochK   = ind.stoch.k;
+    const maAlign  = ind.maAlign;
+    const rows     = ind.rows;
+    const lastRow  = rows[rows.length - 1];
+    const prevRow  = rows[rows.length - 2] || lastRow;
+
+    // ── 규칙 1: RSI 과매수 + 거래량 증가 추세 → 추세 지속 가능 ──
+    // 핵심: 단순 volOsc 수치가 아니라 거래량이 연속으로 늘고 있는지 확인
+    {
+      const recentVols = rows.slice(-5).map(r => r.v);
+      // 최근 5봉 중 4봉 이상이 직전봉보다 거래량 많거나 비슷 (90% 이상)
+      let volIncCount = 0;
+      for (let i = 1; i < recentVols.length; i++) {
+        if (recentVols[i] >= recentVols[i-1] * 0.9) volIncCount++;
+      }
+      const volIncreasing = volIncCount >= 3; // 4봉 중 3봉 이상 증가 추세
+
+      if (rsi > 70 && volOsc > 10 && volIncreasing) {
+        // 거래량 연속 증가 + RSI 과매수 → 강한 추세 지속
+        add(+9, 'RSI과매수+거래량연속증가', 'RSI 과매수 + 거래량 연속 증가 추세 — 추세 강하게 지속 가능');
+      } else if (rsi > 70 && volOsc > 20) {
+        // 거래량 급증만 있는 경우 (연속성 없어도)
+        add(+6, 'RSI과매수+거래량급증', 'RSI 과매수지만 거래량 급증 — 추세 지속 가능');
+      } else if (rsi > 70 && volOsc > 0 && volIncreasing) {
+        // 거래량 증가 추세는 있지만 급증은 아닐 때
+        add(+4, 'RSI과매수+거래량증가추세', 'RSI 과매수 + 거래량 꾸준히 증가 중 — 추세 유지 가능');
+      }
+    }
+
+    // ── 규칙 2: 가격 상승 + OBV 하락 → 세력 이탈 ──────────
+    if (trendPct > 1 && obvVal < obvSig) {
+      add(-8, '가격상승+OBV하락', '가격 오르는데 OBV 하락 — 세력 이탈 가능성');
+    }
+
+    // ── 규칙 3: 가격 하락 + OBV 상승 → 세력 매집 ──────────
+    if (trendPct < -1 && obvVal > obvSig) {
+      add(+8, '가격하락+OBV상승', '가격 하락인데 OBV 상승 — 세력 조용히 매집 중');
+    }
+
+    // ── 규칙 4: RSI 과매도 + 거래량 감소 추세 → 진짜 반등 준비 ──
+    {
+      const recentVols = rows.slice(-5).map(r => r.v);
+      let volDecCount = 0;
+      for (let i = 1; i < recentVols.length; i++) {
+        if (recentVols[i] <= recentVols[i-1] * 1.1) volDecCount++;
+      }
+      const volDecreasing = volDecCount >= 3;
+
+      if (rsi < 35 && volOsc < -10 && volDecreasing) {
+        // 거래량이 연속으로 줄어들면서 RSI 과매도 → 매도세 완전 소진
+        add(+9, 'RSI과매도+거래량연속감소', '과매도 + 거래량 연속 감소 — 매도세 완전 소진, 강한 반등 준비');
+      } else if (rsi < 35 && volOsc < -10) {
+        add(+7, 'RSI과매도+거래량감소', '과매도 + 거래량 바닥 — 매도세 소진, 반등 준비');
+      }
+    }
+
+    // ── 규칙 5: MACD 골든크로스 + 거래량 증가 → 강한 매수 ──
+    if (macdHist > 0 && macdPrev <= 0 && volOsc > 0) {
+      add(+9, 'MACD골든크로스+거래량증가', 'MACD 골든크로스에 거래량 뒷받침 — 신뢰도 높은 매수');
+    }
+
+    // ── 규칙 6: MACD 데드크로스 + 거래량 증가 → 강한 매도 ──
+    if (macdHist < 0 && macdPrev >= 0 && volOsc > 0) {
+      add(-9, 'MACD데드크로스+거래량증가', 'MACD 데드크로스에 거래량 뒷받침 — 하락 신뢰도 높음');
+    }
+
+    // ── 규칙 7: MA 역배열 + 다이버전스 → 반전 가능성 ────────
+    if (maAlign.bearish && ind.rsi.div === 'bullish') {
+      add(+7, 'MA역배열+RSI다이버전스', 'MA 역배열이지만 RSI 다이버전스 — 반전 가능성');
+    }
+
+    // ── 규칙 8: BB 상단 + MACD 약화 → 고점 주의 ────────────
+    if (price >= bbUpper * 0.98 && macdHist < macdPrev && macdHist > 0) {
+      add(-7, 'BB상단+MACD약화', 'BB 상단 도달 + MACD 히스토그램 감소 — 고점 신호');
+    }
+
+    // ── 규칙 9: BB 하단 + RSI 다이버전스 → 강한 반등 신호 ───
+    if (price <= bbLower * 1.02 && ind.rsi.div === 'bullish') {
+      add(+9, 'BB하단+RSI다이버전스', 'BB 하단 + RSI 상승 다이버전스 — 강한 반등 신호');
+    }
+
+    // ── 규칙 10: Stochastic 과매수 + 거래량 감소 → 고점 임박 ─
+    if (stochK > 80 && volOsc < -5) {
+      add(-7, 'Stoch과매수+거래량감소', 'Stoch 과매수 + 거래량 감소 — 고점 임박');
+    }
+
+    // ── 규칙 11: Stochastic 과매도 + OBV 상승 → 강한 저점 ───
+    if (stochK < 20 && obvVal > obvSig) {
+      add(+8, 'Stoch과매도+OBV상승', 'Stoch 과매도 + OBV 매수우위 — 강한 저점 신호');
+    }
+
+    // ── 규칙 12: 가격 상승 + 거래량 감소 추세 → 가짜 반등 ─────
+    {
+      const recentVols = rows.slice(-4).map(r => r.v);
+      let volDecCount = 0;
+      for (let i = 1; i < recentVols.length; i++) {
+        if (recentVols[i] < recentVols[i-1]) volDecCount++;
+      }
+      const volTrendDown = volDecCount >= 2;
+
+      if (trendPct > 1.5 && volOsc < -15 && volTrendDown) {
+        // 가격 오르는데 거래량 연속 감소 → 명백한 가짜 반등
+        add(-8, '가격상승+거래량연속감소', '가격 상승 + 거래량 연속 감소 — 거래량 없는 가짜 반등');
+      } else if (trendPct > 1.5 && volOsc < -15) {
+        add(-6, '가격상승+거래량급감', '가격 상승인데 거래량 급감 — 가짜 반등 가능성');
+      }
+    }
+
+    // ── 규칙 13: 가격 하락 + 거래량 감소 → 하락 둔화 ────────
+    if (trendPct < -1.5 && volOsc < -15) {
+      add(+5, '가격하락+거래량급감', '가격 하락 + 거래량 급감 — 매도세 약화, 반등 준비');
+    }
+
+    // ── 규칙 14: MA 정배열 + OBV 상승 → 건강한 상승 ─────────
+    if (maAlign.bullish && obvVal > obvSig && trendPct > 0) {
+      add(+7, 'MA정배열+OBV상승', 'MA 정배열 + OBV 매수우위 — 건강한 상승 추세');
+    }
+
+    // ── 규칙 15: 변동성 낮음 + BB 스퀴즈 → 큰 움직임 임박 ───
+    if (atrPct < 1.5 && ind.squeeze.squeeze) {
+      add(+4, '저변동성+BB스퀴즈', '변동성 낮음 + BB 스퀴즈 — 큰 방향 이동 임박');
+    }
+
+    // ── 규칙 16: 고점권 + OBV 하락 다이버전스 → 강한 하락 ───
+    if (pos >= 0.80 && ind.obv.div === 'bearish') {
+      add(-8, '고점권+OBV하락다이버전스', '가격 고점권 + OBV 하락 다이버전스 — 강한 하락 신호');
+    }
+
+    // ── 규칙 17: 저점권 + OBV 상승 다이버전스 → 강한 반등 ───
+    if (pos <= 0.20 && ind.obv.div === 'bullish') {
+      add(+8, '저점권+OBV상승다이버전스', '가격 저점권 + OBV 상승 다이버전스 — 강한 반등 신호');
+    }
+
+    // ── 규칙 18: 장대 양봉 + 거래량 급증 → 추세 전환 ────────
+    if (ind.candle && ind.candle.bullish && volOsc > 30) {
+      add(+6, '반전캔들+거래량급증', `${ind.candle.strongest?.name||'반전 캔들'} + 거래량 급증 — 추세 전환 가능`);
+    }
+
+    // ── 규칙 19: RSI 과매수 + OBV 하락 + 고점권 → 강한 매도 ─
+    if (rsi > 65 && obvVal < obvSig && pos >= 0.75) {
+      add(-8, 'RSI과매수+OBV하락+고점권', '3중 매도 신호 — 조정 가능성 높음');
+    }
+
+    // ── 규칙 20: RSI 과매도 + OBV 상승 + 저점권 → 강한 매수 ─
+    if (rsi < 35 && obvVal > obvSig && pos <= 0.25) {
+      add(+8, 'RSI과매도+OBV상승+저점권', '3중 매수 신호 — 강한 저점 반등 가능성');
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // v2 추가 규칙 (21~30) — 코인 특화 ContextEngine 확장
+    // ══════════════════════════════════════════════════════════
+
+    // ── 규칙 21: 가격 MA60 저항 근접 + 거래량 감소 → BUY 억제 ─
+    if (maAlign.ma60 !== null) {
+      const distToMA60 = (maAlign.ma60 - price) / price * 100;
+      if (distToMA60 > 0 && distToMA60 < 3.0 && volOsc < -5) {
+        add(-8, 'MA60저항근접+거래량감소', `MA60까지 ${distToMA60.toFixed(1)}% — 거래량 감소, 돌파 실패 가능`);
+      } else if (distToMA60 > 0 && distToMA60 < 1.5) {
+        add(-5, 'MA60저항근접', `MA60까지 ${distToMA60.toFixed(1)}% — 저항 구간 주의`);
+      }
+    }
+
+    // ── 규칙 22: RSI 극과매도 + OBV 다이버전스 + BB 하단 → 초강력 반등 ─
+    if (rsi <= 25 && ind.obv.div === 'bullish' && price <= bbLower * 1.02) {
+      add(+12, 'RSI극과매도+OBV다이버전스+BB하단', '3중 강반등 — RSI 극과매도 + OBV 다이버전스 + BB 하단 (가중치 2배)');
+    }
+
+    // ── 규칙 23: ADX 강한 추세 + MA 정배열 + 거래량 증가 → 추세 추종 ─
+    {
+      const adxVal = ind.adx.adx ?? 0;
+      if (adxVal > 25 && maAlign.bullish && volOsc > 5) {
+        add(+8, 'ADX강추세+정배열+거래량', `ADX ${adxVal.toFixed(0)} 강한 추세 + 정배열 + 거래량 — 추세 추종 매수`);
+      } else if (adxVal > 25 && maAlign.bearish && volOsc > 5) {
+        add(-8, 'ADX강추세+역배열+거래량', `ADX ${adxVal.toFixed(0)} 강한 추세 + 역배열 + 거래량 — 추세 추종 매도`);
+      }
+    }
+
+    // ── 규칙 24: MACD 히스토그램 연속 감소/증가 + 위치 → 모멘텀 ─
+    {
+      const hArr = ind.macd.arr.hist;
+      const len = hArr.length;
+      if (len >= 4) {
+        const h1 = hArr[len-1], h2 = hArr[len-2], h3 = hArr[len-3], h4 = hArr[len-4];
+        if (h1 > 0 && h1 < h2 && h2 < h3 && h3 < h4 && pos >= 0.65) {
+          add(-7, 'MACD연속약화+고점권', 'MACD 4봉 연속 감소 + 고점권 — 모멘텀 약화');
+        }
+        if (h1 < 0 && h1 > h2 && h2 > h3 && h3 > h4 && pos <= 0.35) {
+          add(+7, 'MACD연속회복+저점권', 'MACD 4봉 연속 회복 + 저점권 — 반등 모멘텀 축적');
+        }
+      }
+    }
+
+    // ── 규칙 25: BB 폭 수축 + 방향 확인 → 돌파 방향 보너스 ─
+    if (ind.squeeze && !ind.squeeze.squeeze && ind.squeeze.width < 2.0) {
+      if (slope > 0.05 && macdHist > 0) {
+        add(+7, 'BB수축+상승방향', 'BB 폭 수축 + 상승 방향 — 상방 돌파 가능');
+      } else if (slope < -0.05 && macdHist < 0) {
+        add(-7, 'BB수축+하락방향', 'BB 폭 수축 + 하락 방향 — 하방 돌파 가능');
+      }
+    }
+
+    // ── 규칙 26: 다중 지표 중립 수렴 → 관망 강화 ─
+    {
+      const rsiNeutral = rsi > 40 && rsi < 60;
+      const macdNeutral = Math.abs(macdHist) < Math.abs(price * 0.002);
+      const stochNeutral = stochK > 35 && stochK < 65;
+      const trendFlat = Math.abs(trendPct) < 1.2 && Math.abs(slope) < 0.04;
+      if (rsiNeutral && macdNeutral && stochNeutral && trendFlat) {
+        add(0, '다중지표중립수렴', 'RSI·MACD·Stoch·추세 모두 중립 — 방향성 판단 불가, 관망 권장');
+      }
+    }
+
+    // ── 규칙 27: 급락 + 거래량 폭증 → 패닉셀/항복 반등 ─
+    if (trendPct < -5 && volOsc > 50) {
+      add(+9, '패닉셀+거래량폭증', '급락 + 거래량 폭증 — 투매(항복) 가능성, 단기 반등 기대');
+    } else if (trendPct < -3 && volOsc > 30) {
+      add(+5, '하락+거래량급증', '하락 + 거래량 급증 — 매도 클라이맥스 가능성');
+    }
+
+    // ── 규칙 28: Stoch + RSI 동시 극과매도 + OBV 상승 → 초강력 반등 ─
+    if (stochK < 15 && rsi < 25 && obvVal > obvSig) {
+      add(+10, 'Stoch+RSI동시극과매도+OBV매수', 'Stoch + RSI 동시 극과매도 + OBV 매수 — 초강력 반등 조건');
+    }
+
+    // ── 규칙 29: MA 수렴 + 거래량 감소 → 에너지 축적 ─
+    if (ind.maConv && ind.maConv.converging && volOsc < -10) {
+      add(+3, 'MA수렴+거래량감소', 'MA 수렴 + 거래량 감소 — 에너지 축적, 큰 변동 임박');
+    }
+
+    // ── 규칙 30: 연속 양봉/음봉 + 추세 일치 → 추세 지속 ─
+    {
+      const last5 = rows.slice(-5);
+      let bullCount = 0, bearCount = 0;
+      for (const r of last5) {
+        if (r.c > r.o) bullCount++;
+        else if (r.c < r.o) bearCount++;
+      }
+      if (bullCount >= 4 && trendPct > 1.5) {
+        add(+6, '연속양봉+상승추세', `최근 5봉 중 ${bullCount}봉 양봉 + 상승 — 매수세 지속`);
+      } else if (bearCount >= 4 && trendPct < -1.5) {
+        add(-6, '연속음봉+하락추세', `최근 5봉 중 ${bearCount}봉 음봉 + 하락 — 매도세 지속`);
+      }
+    }
+
+    bonus = Utils.clamp(bonus, -30, 30);
+    return { bonus, rules };
+  },
+};
+
+// ════════════════════════════════════════════════════════════
+// 16. SwingStructure — 고점/저점 구조 판단
+// 상승추세: 고점↑ + 저점↑ / 하락추세: 고점↓ + 저점↓
+// ════════════════════════════════════════════════════════════
+const SwingStructure = {
+  /**
+   * 스윙 고점/저점 추출 후 추세 구조 판단
+   * @returns {{ trend, higherHighs, higherLows, lowerHighs, lowerLows, score }}
+   */
+  analyze(rows, lookback = 60) {
+    const sub = rows.slice(Math.max(0, rows.length - lookback));
+
+    // 스윙 고점/저점 찾기 (좌우 2봉 기준)
+    const swingHighs = [], swingLows = [];
+    for (let i = 2; i < sub.length - 2; i++) {
+      if (sub[i].h > sub[i-1].h && sub[i].h > sub[i-2].h &&
+          sub[i].h > sub[i+1].h && sub[i].h > sub[i+2].h)
+        swingHighs.push({ idx: i, val: sub[i].h });
+      if (sub[i].l < sub[i-1].l && sub[i].l < sub[i-2].l &&
+          sub[i].l < sub[i+1].l && sub[i].l < sub[i+2].l)
+        swingLows.push({ idx: i, val: sub[i].l });
+    }
+
+    if (swingHighs.length < 2 || swingLows.length < 2)
+      return { trend: 'unknown', score: 0, detail: '스윙 포인트 부족' };
+
+    // 최근 2개 고점/저점 비교
+    const recentHighs = swingHighs.slice(-2);
+    const recentLows  = swingLows.slice(-2);
+    const higherHighs = recentHighs[1].val > recentHighs[0].val;
+    const higherLows  = recentLows[1].val  > recentLows[0].val;
+    const lowerHighs  = recentHighs[1].val < recentHighs[0].val;
+    const lowerLows   = recentLows[1].val  < recentLows[0].val;
+
+    let trend = 'sideways', score = 0;
+
+    if (higherHighs && higherLows) {
+      trend = 'uptrend';   score = +15; // 완전 상승 추세
+    } else if (lowerHighs && lowerLows) {
+      trend = 'downtrend'; score = -15; // 완전 하락 추세
+    } else if (higherHighs && !higherLows) {
+      trend = 'weakup';    score = +5;  // 고점↑ 저점은 유지
+    } else if (lowerLows && !lowerHighs) {
+      trend = 'weakdown';  score = -5;  // 저점↓ 고점은 유지
+    } else if (lowerHighs && higherLows) {
+      trend = 'wedge';     score = 0;   // 쐐기 — 큰 변동 임박
+    }
+
+    const trendKo = {
+      uptrend:'상승 추세 구조', downtrend:'하락 추세 구조',
+      weakup:'약한 상승 구조', weakdown:'약한 하락 구조',
+      wedge:'쐐기형 수렴', sideways:'횡보',
+    };
+
+    return { trend, score, label: trendKo[trend]||'횡보', higherHighs, higherLows, lowerHighs, lowerLows,
+      lastHigh: recentHighs[1].val, lastLow: recentLows[1].val };
+  },
+
+  signal(structure) {
+    if (structure.trend === 'uptrend')   return { type:'buy',  label:`구조: ${structure.label}`, strength:'strong' };
+    if (structure.trend === 'downtrend') return { type:'sell', label:`구조: ${structure.label}`, strength:'strong' };
+    if (structure.trend === 'weakup')    return { type:'buy',  label:`구조: ${structure.label}`, strength:'weak' };
+    if (structure.trend === 'weakdown')  return { type:'sell', label:`구조: ${structure.label}`, strength:'weak' };
+    if (structure.trend === 'wedge')     return { type:'neutral', label:`구조: ${structure.label} ⚡`, strength:'strong' };
+    return { type:'neutral', label:'구조: 횡보', strength:'none' };
+  },
+};
+
+// ════════════════════════════════════════════════════════════
+// 17. MAConvergence — 이평선 수렴 감지 + 골든크로스 시점
+// ════════════════════════════════════════════════════════════
+const MAConvergence = {
+  analyze(closes) {
+    const len   = closes.length;
+    const last  = len - 1;
+    const sma   = (arr, p) => { let s=0; for(let i=arr.length-p;i<arr.length;i++) s+=arr[i]; return s/p; };
+
+    const ma5   = sma(closes, 5);
+    const ma20  = sma(closes, 20);
+    const ma60  = sma(closes, 60);
+
+    // 이전 5봉 전 MA 값 (수렴 여부 확인)
+    const prev  = closes.slice(0, -5);
+    const pma5  = sma(prev, 5);
+    const pma20 = sma(prev, 20);
+    const pma60 = sma(prev, 60);
+
+    // 수렴도: MA 간 격차가 줄어들고 있는지
+    const spread     = Math.abs(ma5 - ma20) + Math.abs(ma20 - ma60);
+    const prevSpread = Math.abs(pma5 - pma20) + Math.abs(pma20 - pma60);
+    const converging = spread < prevSpread * 0.7; // 30% 이상 좁아짐
+    const tight      = spread / closes[last] < 0.015; // 가격의 1.5% 이내
+
+    // MA5가 MA20 골든크로스 발생 여부 (현재봉에서 교차)
+    const prevMa5_5  = sma(closes.slice(0, -1), 5);
+    const prevMa20_5 = sma(closes.slice(0, -1), 20);
+    const goldenCross = prevMa5_5 <= prevMa20_5 && ma5 > ma20;  // 방금 교차
+    const deadCross   = prevMa5_5 >= prevMa20_5 && ma5 < ma20;
+
+    // MA20 기울기 (상향/하향)
+    const ma20prev = sma(closes.slice(0, -3), 20);
+    const ma20slope = (ma20 - ma20prev) / ma20prev * 100;
+
+    // 가격이 MA20 위/아래로 이탈
+    const price    = closes[last];
+    const prevPrice = closes[last - 1];
+    const crossAboveMA20 = prevPrice < ma20prev && price >= ma20; // MA20 상향 이탈
+    const crossBelowMA20 = prevPrice > ma20prev && price <= ma20; // MA20 하향 이탈
+
+    return {
+      converging, tight, goldenCross, deadCross,
+      ma20slope, crossAboveMA20, crossBelowMA20,
+      spread, ma5, ma20, ma60,
+    };
+  },
+
+  signal(mac) {
+    if (mac.goldenCross)      return { type:'buy',  label:'MA5 골든크로스 발생', strength:'strong' };
+    if (mac.deadCross)        return { type:'sell', label:'MA5 데드크로스 발생', strength:'strong' };
+    if (mac.crossAboveMA20)   return { type:'buy',  label:'가격 MA20 상향 이탈', strength:'strong' };
+    if (mac.crossBelowMA20)   return { type:'sell', label:'가격 MA20 하향 이탈', strength:'strong' };
+    if (mac.tight && mac.converging) return { type:'neutral', label:'MA 수렴 ⚡ 큰 변동 임박', strength:'strong' };
+    if (mac.converging)       return { type:'neutral', label:'MA 수렴 중', strength:'weak' };
+    if (mac.ma20slope > 0.1)  return { type:'buy',  label:'MA20 상향 기울기', strength:'weak' };
+    if (mac.ma20slope < -0.1) return { type:'sell', label:'MA20 하향 기울기', strength:'weak' };
+    return { type:'neutral', label:'MA 중립', strength:'none' };
+  },
+};
+
+// ════════════════════════════════════════════════════════════
+// 18. StochDivergence — Stochastic 다이버전스
+// ════════════════════════════════════════════════════════════
+const StochDivergence = {
+  calc(rows, lookback = 14) {
+    if (rows.length < lookback * 2) return 'none';
+
+    const last = rows.length - 1;
+    const prev = Math.max(0, last - lookback);
+
+    // 스윙 고점 찾기 (가격 + Stoch)
+    const kArr = [];
+    for (let i = 14 - 1; i < rows.length; i++) {
+      const sl = rows.slice(i - 14 + 1, i + 1);
+      const hh = Math.max(...sl.map(r => r.h));
+      const ll = Math.min(...sl.map(r => r.l));
+      kArr.push(hh === ll ? 50 : ((rows[i].c - ll) / (hh - ll)) * 100);
+    }
+
+    const lastK = kArr[kArr.length - 1];
+    const prevK = kArr[Math.max(0, kArr.length - 1 - lookback)];
+    const priceUp  = rows[last].c > rows[prev].c;
+    const stochUp  = lastK > prevK;
+
+    if (priceUp && !stochUp && lastK > 70)  return 'bearish'; // 가격↑ Stoch↓ 과매수
+    if (!priceUp && stochUp && lastK < 30)  return 'bullish'; // 가격↓ Stoch↑ 과매도
+    return 'none';
+  },
+
+  signal(div) {
+    if (div === 'bullish') return { type:'buy',  label:'Stoch 상승 다이버전스', strength:'strong' };
+    if (div === 'bearish') return { type:'sell', label:'Stoch 하락 다이버전스', strength:'strong' };
+    return { type:'neutral', label:'Stoch 다이버전스 없음', strength:'none' };
+  },
+};
+
+// ════════════════════════════════════════════════════════════
+// 19. PsychLevel — 심리적 가격대 감지
+// 라운드 넘버 근처에서 지지/저항 강화
+// ════════════════════════════════════════════════════════════
+const PsychLevel = {
+  /**
+   * 가격이 라운드 넘버에 얼마나 가까운지
+   * @returns {{ nearLevel, level, distance, type }}
+   */
+  analyze(price) {
+    if (!price || price <= 0) return { nearLevel: false };
+
+    // 가격 크기에 따른 라운드 넘버 단위 결정
+    const magnitude = Math.pow(10, Math.floor(Math.log10(price)));
+    const units = [
+      magnitude,
+      magnitude * 0.5,
+      magnitude * 0.25,
+      magnitude * 2,
+    ];
+
+    let closest = null, minDist = Infinity;
+    for (const unit of units) {
+      const rounded = Math.round(price / unit) * unit;
+      const dist    = Math.abs(price - rounded) / price;
+      if (dist < minDist) { minDist = dist; closest = rounded; }
+    }
+
+    const nearLevel  = minDist < 0.015; // 1.5% 이내
+    const veryNear   = minDist < 0.005; // 0.5% 이내
+    const aboveLevel = price > closest;  // 레벨 위 → 지지
+    const belowLevel = price < closest;  // 레벨 아래 → 저항
+
+    return {
+      nearLevel,
+      veryNear,
+      level:    closest,
+      distance: (minDist * 100).toFixed(2) + '%',
+      type:     aboveLevel ? 'support' : 'resistance',
+      label:    `심리적 ${aboveLevel ? '지지' : '저항'}: ${closest.toLocaleString('ko-KR')}원`,
+    };
+  },
+
+  signal(psych) {
+    if (!psych.nearLevel) return { type:'neutral', label:'심리적 가격대 없음', strength:'none' };
+    if (psych.veryNear && psych.type === 'support')
+      return { type:'buy',  label:`${psych.label} 근접`, strength:'strong' };
+    if (psych.veryNear && psych.type === 'resistance')
+      return { type:'sell', label:`${psych.label} 근접`, strength:'strong' };
+    if (psych.type === 'support')
+      return { type:'buy',  label:`${psych.label}`, strength:'weak' };
+    return { type:'sell', label:`${psych.label}`, strength:'weak' };
+  },
+};
+
+// ════════════════════════════════════════════════════════════
+const _volSoftenCache = {};
+
+function calcAll(rows) {
+  const closes    = rows.map(r => r.c);
+  const lastIdx   = closes.length - 1;
+  const price     = closes[lastIdx];
+  const rsiArr    = RSI.calc(closes);
+  const rsiVal    = rsiArr[lastIdx] ?? 50;
+  const macdObj   = MACD.calc(closes);
+  const stochVal  = Stochastic.calc(rows);
+  const cciVal    = CCI.calc(rows);
+  const adxVal    = ADX.calc(rows);
+  const obvVal    = OBV.calc(rows);
+  const volOsc    = VolumeOSC.calc(rows);
+  const bbVal     = BollingerBands.calc(closes);
+  const squeeze   = BollingerBands.squeeze(closes);
+  const maAlign   = MA.alignment(closes);
+  const { trendPct, slope } = Trend.calc(closes);
+  const struct    = Trend.structure(rows);
+  const srLvls    = Trend.levels(rows);
+  const fib       = Trend.fibonacci(rows);
+  const atrObj    = ATR.calc(rows);
+  const rsiDiv    = RSI.divergence(closes, rsiArr);
+  const obvDiv    = OBV.divergence(rows);
+  const candle    = Candle.analyze(rows);
+  const volPattern= VolPattern.analyze(rows);
+  const macdHist    = macdObj.hist[lastIdx];
+  const macdHistPct = price ? (macdHist / price) * 100 : 0;
+
+  const base = {
+    price,
+    rsi:        { val: rsiVal, arr: rsiArr, div: rsiDiv },
+    macd:       { line: macdObj.line[lastIdx], sig: macdObj.sig[lastIdx], hist: macdHist, histPct: macdHistPct, arr: macdObj },
+    stoch:      stochVal,
+    cci:        cciVal,
+    adx:        adxVal,
+    obv:        { ...obvVal, div: obvDiv },
+    volOsc,
+    bb:         { ...bbVal, price },
+    squeeze,
+    maAlign,
+    trend:      { pct: trendPct, slope, struct, levels: srLvls, fib },
+    atr:        atrObj,
+    candle,
+    volPattern,
+    rows,
+    closes,
+  };
+
+  base.pullback    = PullbackScore.calc(base);
+  base.context     = ContextEngine.analyze(base);
+  base.swingStruct = SwingStructure.analyze(rows);
+  base.maConv      = MAConvergence.analyze(closes);
+  base.stochDiv    = StochDivergence.calc(rows);
+  base.psychLevel  = PsychLevel.analyze(closes[closes.length - 1]);
+  return base;
+}
+
+// ════════════════════════════════════════════════════════════
+// 15. ContextEngine — 지표 간 모순 감지 + 맥락적 판단
+// 규칙 기반으로 지표 조합의 의미를 해석
+// 결과는 분석기 보너스/페널티로 반영
+// ════════════════════════════════════════════════════════════
+
+// ═══ INDICATORS MODULE END ═══
+
+// ════════════════════════════════════════════════════════════
+// BACKTEST ENGINE
+// ════════════════════════════════════════════════════════════
+
+const PROXY_BASE = 'https://stock-signal-proxy.cheaheechang.workers.dev';
+const TP_MULT = 4.8, SL_MULT = 2.0;
+
+const clamp = (v,lo,hi) => Math.max(lo, Math.min(hi, v));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+const SCORING_MODES = {
+  aggressive:   { tanh:1.25, ctx:0.8,  label:'🔥 공격적', short:'공격적' },
+  swing:        { tanh:1.05, ctx:0.7,  label:'⚖️ 스윙',   short:'스윙' },
+  conservative: { tanh:1.0,  ctx:0.65, label:'🛡️ 보수적', short:'보수적' },
+};
+
+let _scoringMode = 'swing';
+let _buyTh = 62, _sellTh = 38;
+let _assetType = 'coin';
+let _running = false;
+
+function getScoringParams() {
+  return SCORING_MODES[_scoringMode] || SCORING_MODES.swing;
+}
+
+// ── 유틸 ─────────────────────────────────────────────
+function toast(msg, ms=1800) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), ms);
+}
+function tickClock() {
+  const d = new Date();
+  document.getElementById('clock').textContent =
+    [d.getHours(),d.getMinutes(),d.getSeconds()].map(v=>String(v).padStart(2,'0')).join(':');
+}
+setInterval(tickClock, 1000); tickClock();
+
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const fmtPct = n => !isFinite(n) ? '-' : (n>=0?'+':'') + n.toFixed(2) + '%';
+const fmtPrice = n => {
+  if(!isFinite(n)) return '-';
+  if(n >= 1000) return Math.round(n).toLocaleString('ko-KR');
+  return n.toFixed(n < 1 ? 4 : 2);
+};
+const fmtDate = iso => {
+  if(!iso) return '-';
+  const d = new Date(iso);
+  return `${d.getMonth()+1}/${d.getDate()}`;
+};
+const fmtDateFull = iso => {
+  if(!iso) return '-';
+  const d = new Date(iso);
+  return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+};
+
+// ── UI 컨트롤 ────────────────────────────────────────
+function setAsset(type) {
+  _assetType = type;
+  document.querySelectorAll('#assetType .chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.val === type);
+  });
+  const inp = document.getElementById('symbolInput');
+  if(type === 'coin') inp.placeholder = 'KRW-BTC';
+  else if(type === 'stock_kr') inp.placeholder = '005930 (삼성전자)';
+  else inp.placeholder = 'AAPL';
+}
+
+function setMode(mode) {
+  _scoringMode = mode;
+  document.querySelectorAll('#modeGroup .chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.val === mode);
+  });
+}
+
+// ── API: 캔들 데이터 가져오기 ─────────────────────────
+async function fetchJSON(url, ms=15000) {
+  const proxyUrl = `${PROXY_BASE}/proxy?url=${encodeURIComponent(url)}`;
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  const res = await fetch(proxyUrl, {signal: ctrl.signal, cache: 'no-store'});
+  clearTimeout(t);
+  if(!res.ok) throw new Error(`fetch 실패 (${res.status})`);
+  return await res.json();
+}
+
+// USD/KRW 환율
+let _usdKrw = null, _usdKrwTs = 0;
+async function fetchUsdKrw() {
+  if(_usdKrw && Date.now()-_usdKrwTs < 30*60*1000) return _usdKrw;
+  try {
+    const r = await fetchJSON('https://api.frankfurter.app/latest?from=USD&to=KRW', 8000);
+    if(r?.rates?.KRW) { _usdKrw = r.rates.KRW; _usdKrwTs = Date.now(); return _usdKrw; }
+  } catch(_) {}
+  try {
+    const r2 = await fetchJSON('https://open.er-api.com/v6/latest/USD', 8000);
+    if(r2?.rates?.KRW) { _usdKrw = r2.rates.KRW; _usdKrwTs = Date.now(); return _usdKrw; }
+  } catch(_) {}
+  return _usdKrw || 1350;
+}
+
+function toBinanceSymbol(market) {
+  const coin = market.replace('KRW-','');
+  return coin + 'USDT';
+}
+
+const TF_MAP  = {'1h':'minutes/60','4h':'minutes/240','1d':'days','1w':'weeks'};
+const BN_TF_MAP = {'1h':'1h','4h':'4h','1d':'1d','1w':'1w'};
+
+// 코인 캔들 — 바이낸스 (대량 데이터용, KRW 변환)
+async function fetchBinanceCandles(market, tf, count=500) {
+  const symbol = toBinanceSymbol(market);
+  const interval = BN_TF_MAP[tf] || '1d';
+  const url = `https://api.binance.com/api/v3/klines?symbol=${encodeURIComponent(symbol)}&interval=${interval}&limit=${count}`;
+  const [raw, usdKrw] = await Promise.all([fetchJSON(url, 15000), fetchUsdKrw()]);
+  if(!Array.isArray(raw) || raw.length < 30) throw new Error('바이낸스 캔들 부족');
+  return raw.map(k => ({
+    t: new Date(k[0]).toISOString(),
+    o: parseFloat(k[1]) * usdKrw,
+    h: parseFloat(k[2]) * usdKrw,
+    l: parseFloat(k[3]) * usdKrw,
+    c: parseFloat(k[4]) * usdKrw,
+    v: parseFloat(k[5]),
+  }));
+}
+
+// 코인 캔들 — 업비트 우선, 바이낸스 폴백
+async function fetchCoinCandles(market, tf, count=500) {
+  // 업비트는 최대 200개씩 → 반복 호출로 대량 수집
+  try {
+    let allRows = [];
+    let to = '';
+    const perCall = 200;
+    const needed = count;
+    while(allRows.length < needed) {
+      const toParam = to ? `&to=${to}` : '';
+      const raw = await fetchJSON(
+        `https://api.upbit.com/v1/candles/${TF_MAP[tf]||'days'}?market=${market}&count=${perCall}${toParam}`
+      );
+      if(!Array.isArray(raw) || raw.length === 0) break;
+      const rows = raw.map(c => ({
+        t: c.candle_date_time_kst,
+        o: c.opening_price, h: c.high_price, l: c.low_price, c: c.trade_price,
+        v: c.candle_acc_trade_volume,
+      }));
+      allRows = allRows.concat(rows);
+      if(raw.length < perCall) break;
+      // 업비트는 역순 반환 → 마지막 항목의 시간이 가장 오래됨
+      to = raw[raw.length-1].candle_date_time_utc;
+      await sleep(120); // rate limit
+    }
+    if(allRows.length >= 50) {
+      return allRows.reverse(); // 시간순 정렬
+    }
+  } catch(e) {
+    console.warn('업비트 실패, 바이낸스 폴백:', e.message);
+  }
+  return await fetchBinanceCandles(market, tf, count);
+}
+
+// 주식 캔들 — Yahoo Finance
+async function fetchStockCandles(code, tf, count=500) {
+  let ticker;
+  if(_assetType === 'stock_kr') {
+    // 6자리 코드 → .KS/.KQ
+    ticker = /^[0-9]{6}$/.test(code) ? `${code}.KS` : code;
+  } else {
+    ticker = code;
+  }
+  const intervalMap = {'1d':'1d', '1w':'1wk'};
+  const rangeMap = {'1d':'5y', '1w':'10y'};
+  const interval = intervalMap[tf] || '1d';
+  const range = rangeMap[tf] || '5y';
+
+  const yfUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=${interval}&range=${range}`;
+  const proxyUrl = `${PROXY_BASE}/proxy?url=${encodeURIComponent(yfUrl)}`;
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 20000);
+  const res = await fetch(proxyUrl, {signal: ctrl.signal, cache: 'no-store'});
+  clearTimeout(t);
+  if(!res.ok) throw new Error(`Yahoo Finance 실패 (${res.status})`);
+  const raw = await res.json();
+  if(!raw?.chart?.result?.[0]?.timestamp) throw new Error('Yahoo Finance 데이터 없음');
+  const result = raw.chart.result[0];
+  const ts = result.timestamp || [];
+  const q = result.indicators?.quote?.[0] || {};
+  const rows = ts.map((t,i) => ({
+    t: new Date(t*1000).toISOString(),
+    o: q.open?.[i] || q.close?.[i] || 0,
+    h: q.high?.[i] || q.close?.[i] || 0,
+    l: q.low?.[i] || q.close?.[i] || 0,
+    c: q.close?.[i] || 0,
+    v: q.volume?.[i] || 0,
+  })).filter(r => r.c > 0);
+  if(rows.length < 50) throw new Error('Yahoo Finance 데이터 부족');
+  return rows.slice(-count);
+}
+
+// 통합 캔들 가져오기
+async function fetchCandles(symbol, tf, count=500) {
+  if(_assetType === 'coin') return await fetchCoinCandles(symbol, tf, count);
+  return await fetchStockCandles(symbol, tf, count);
+}
+
+// ── 스코어링 엔진 (기존과 동일) ──────────────────────
+function computeScore(ind, volSoft, ctxBonus, derivBonus=0) {
+  let s = 50;
+  s += clamp(ind.trend.pct * 4.0, -28, 28);
+  s += clamp(ind.trend.slope * 18.0, -18, 18);
+  s += clamp((50 - ind.rsi.val) * 0.65, -32, 32);
+  s += clamp(Math.tanh(ind.macd.histPct * 0.35) * 18, -18, 18);
+  s += clamp(Math.tanh((1.6 - volSoft) * 0.9) * 18, -18, 18);
+  let st = clamp((0.5 - ind.trend.struct.pos) * 26.0, -14, 14);
+  if(ind.trend.struct.nearSupport) st += 10;
+  if(ind.trend.struct.nearResistance) st -= 10;
+  s += clamp(st, -22, 22);
+  let b = 0;
+  if(ind.rsi.div === 'bullish') b += 6; if(ind.rsi.div === 'bearish') b -= 6;
+  if(ind.obv.div === 'bullish') b += 5; if(ind.obv.div === 'bearish') b -= 5;
+  const add = (sig, w) => { if(!sig) return; if(sig.type === 'buy') b += w; if(sig.type === 'sell') b -= w; };
+  add(Stochastic.signal(ind.stoch.k, ind.stoch.d), 3);
+  add(CCI.signal(ind.cci), 3);
+  add(OBV.signal(ind.obv.val, ind.obv.sig), 3);
+  add(VolumeOSC.signal(ind.volOsc), 2);
+  add(MA.signal(ind.maAlign), 4);
+  add(BollingerBands.signal(ind.bb.price, ind.bb), 3);
+  add(ADX.signal(ind.adx.adx, ind.adx.pdi, ind.adx.mdi), 2);
+  if(ind.candle.bullish) b += clamp(ind.candle.score, 0, 12);
+  if(ind.candle.bearish) b -= clamp(Math.abs(ind.candle.score), 0, 12);
+  if(ind.volPattern.bullish) b += clamp(ind.volPattern.score, 0, 10);
+  if(ind.volPattern.bearish) b -= clamp(Math.abs(ind.volPattern.score), 0, 10);
+  b = clamp(b, -30, 30);
+  let auxBonus = 0;
+  if(ind.pullback && ind.pullback.score >= 60) auxBonus += 5;
+  else if(ind.pullback && ind.pullback.score >= 40) auxBonus += 3;
+  if(ind.swingStruct) {
+    if(ind.swingStruct.trend === 'up') auxBonus += 4;
+    else if(ind.swingStruct.trend === 'down') auxBonus -= 4;
+  }
+  if(ind.stochDiv === 'bullish') auxBonus += 3;
+  else if(ind.stochDiv === 'bearish') auxBonus -= 3;
+  if(ind.psychLevel && ind.psychLevel.nearLevel) {
+    if(ind.psychLevel.type === 'support') auxBonus += 2;
+    else if(ind.psychLevel.type === 'resistance') auxBonus -= 2;
+  }
+  auxBonus = clamp(auxBonus, -12, 12);
+  auxBonus += clamp(derivBonus, -8, 8);
+  auxBonus = clamp(auxBonus, -18, 18);
+  const params = getScoringParams();
+  const combined = clamp(s + b*0.5 + clamp(ctxBonus, -30, 30) * params.ctx + auxBonus, 0, 100);
+  const rawScore = Math.round(clamp(50 + 50 * Math.tanh(((combined-50)/50) * params.tanh), 0, 100));
+  const mom = clamp(ind.trend.pct*4.0, -28, 28) + clamp(ind.trend.slope*18.0, -18, 18);
+  const osc = clamp((ind.rsi.val-50)*0.7, -32, 32) + clamp(Math.tanh(ind.macd.histPct*0.35)*18, -18, 18);
+  return { rawScore, mom, osc };
+}
+
+// quickScore for backtest (단순화: derivBonus=0)
+const _btVolCache = {};
+function btQuickScore(rows) {
+  const ind = calcAll(rows);
+  const volSoft = ATR.soften(ind.atr.pct, 'bt', _btVolCache);
+  const ctx = ind.context || ContextEngine.analyze(ind);
+  const ctxBonus = clamp(ctx.bonus, -30, 30);
+  const { rawScore: score, mom, osc } = computeScore(ind, volSoft, ctxBonus, 0);
+  let action = score >= _buyTh ? 'BUY' : score <= _sellTh ? 'SELL' : 'HOLD';
+  if(action === 'BUY' && !(mom > 0 && osc > 0)) action = 'HOLD';
+  if(action === 'BUY' && score < _buyTh + 3.5) action = 'HOLD';
+  if(action === 'BUY' && ind.trend.struct.nearResistance) action = 'HOLD';
+  if(volSoft >= 10.0) action = 'HOLD';
+  else if(volSoft >= 7.0 && action === 'BUY' && score < _buyTh + 8) action = 'HOLD';
+  if(action !== 'HOLD' && Math.abs(ind.trend.slope) <= 0.035 && Math.abs(ind.trend.pct) <= 0.9) action = 'HOLD';
+  return { score, action, price: rows[rows.length-1].c, date: rows[rows.length-1].t, rsi: ind.rsi.val, atrPct: ind.atr.pct, volSoft };
+}
+
+// ── 백테스트 시뮬레이션 ──────────────────────────────
+async function simulateBacktest(allRows, winSize, onProgress) {
+  const signals = [];
+  const total = allRows.length - winSize;
+  if(total < 20) throw new Error('데이터 부족: 최소 ' + (winSize + 20) + '봉 필요');
+
+  let buyCooldown = 0, sellCooldown = 0;
+
+  for(let i = 0; i < total; i++) {
+    // 쿨다운 감소
+    if(buyCooldown > 0) buyCooldown--;
+    if(sellCooldown > 0) sellCooldown--;
+
+    const slice = allRows.slice(i, i + winSize);
+    const result = btQuickScore(slice);
+
+    if(result.action === 'BUY' && buyCooldown <= 0) {
+      buyCooldown = 5; // BUY 후 5봉 쿨다운
+      const entryIdx = i + winSize - 1;
+      const entryPrice = result.price;
+      const returns = {};
+      for(const hold of [5, 10, 20]) {
+        const exitIdx = entryIdx + hold;
+        if(exitIdx < allRows.length) {
+          const exitPrice = allRows[exitIdx].c;
+          returns[hold] = ((exitPrice - entryPrice) / entryPrice) * 100;
+        } else {
+          returns[hold] = null;
+        }
+      }
+      signals.push({ action:'BUY', score:result.score, date:result.date, price:entryPrice, rsi:result.rsi, atrPct:result.atrPct, returns });
+    } else if(result.action === 'SELL' && sellCooldown <= 0) {
+      sellCooldown = 5; // SELL 후 5봉 쿨다운
+      const entryIdx = i + winSize - 1;
+      const entryPrice = result.price;
+      const returns = {};
+      for(const hold of [5, 10, 20]) {
+        const exitIdx = entryIdx + hold;
+        if(exitIdx < allRows.length) {
+          const exitPrice = allRows[exitIdx].c;
+          returns[hold] = ((exitPrice - entryPrice) / entryPrice) * 100;
+        } else {
+          returns[hold] = null;
+        }
+      }
+      signals.push({ action:'SELL', score:result.score, date:result.date, price:entryPrice, rsi:result.rsi, atrPct:result.atrPct, returns });
+    }
+
+    // 진행 표시 (50봉마다 yield)
+    if(i % 50 === 0 || i === total - 1) {
+      onProgress(Math.round((i / total) * 100), `${i}/${total} 봉 분석 중...`);
+      await sleep(0); // UI 갱신
+    }
+  }
+  return signals;
+}
+
+// ── 결과 분석 ────────────────────────────────────────
+function analyzeResults(signals) {
+  const buySignals = signals.filter(s => s.action === 'BUY');
+  const sellSignals = signals.filter(s => s.action === 'SELL');
+
+  const analyze = (sigs, holdDays) => {
+    const valid = sigs.filter(s => s.returns[holdDays] !== null);
+    if(valid.length === 0) return { count:0, winRate:0, avgReturn:0, maxGain:0, maxLoss:0, median:0 };
+    const rets = valid.map(s => s.returns[holdDays]);
+    const wins = rets.filter(r => r > 0).length;
+    const sorted = [...rets].sort((a,b) => a-b);
+    return {
+      count: valid.length,
+      winRate: (wins / valid.length) * 100,
+      avgReturn: rets.reduce((a,b) => a+b, 0) / rets.length,
+      maxGain: Math.max(...rets),
+      maxLoss: Math.min(...rets),
+      median: sorted[Math.floor(sorted.length/2)],
+    };
+  };
+
+  const result = {};
+  for(const hold of [5, 10, 20]) {
+    result[hold] = {
+      buy: analyze(buySignals, hold),
+      sell: analyze(sellSignals, hold),
+    };
+  }
+  result.totalSignals = signals.length;
+  result.buyCount = buySignals.length;
+  result.sellCount = sellSignals.length;
+  result.holdCount = 0; // 기록 안함
+  result.signals = signals;
+  return result;
+}
+
+// ── 수익률 분포 계산 ─────────────────────────────────
+function calcDistribution(signals, holdDays) {
+  const bins = [
+    { label: '< -10%', min: -Infinity, max: -10, count: 0 },
+    { label: '-10~-5%', min: -10, max: -5, count: 0 },
+    { label: '-5~-2%', min: -5, max: -2, count: 0 },
+    { label: '-2~0%', min: -2, max: 0, count: 0 },
+    { label: '0~+2%', min: 0, max: 2, count: 0 },
+    { label: '+2~+5%', min: 2, max: 5, count: 0 },
+    { label: '+5~+10%', min: 5, max: 10, count: 0 },
+    { label: '> +10%', min: 10, max: Infinity, count: 0 },
+  ];
+  const buySignals = signals.filter(s => s.action === 'BUY');
+  for(const s of buySignals) {
+    const r = s.returns[holdDays];
+    if(r === null) continue;
+    for(const bin of bins) {
+      if(r >= bin.min && r < bin.max) { bin.count++; break; }
+    }
+  }
+  return bins;
+}
+
+// ── 결과 렌더링 ──────────────────────────────────────
+function renderSingleResult(result, symbol) {
+  const buy10 = result[10].buy;
+
+  let html = '';
+  // 요약 카드
+  html += `<div style="font-size:13px;font-weight:700;margin-bottom:10px;font-family:var(--mono);color:var(--gold);">
+    📊 ${esc(symbol)} — ${getScoringParams().short} 모드 (BUY_TH:${_buyTh})
+  </div>`;
+  html += '<div class="summary-grid">';
+  html += summaryCard('BUY 신호', result.buyCount + '회', `총 ${result.totalSignals}건 중`);
+  html += summaryCard('SELL 신호', result.sellCount + '회', '');
+  html += summaryCard('10일 승률', fmtPctClean(buy10.winRate), buy10.count + '건 기준', buy10.winRate >= 55 ? 'var(--green)' : buy10.winRate < 45 ? 'var(--red)' : 'var(--yellow)');
+  html += summaryCard('10일 평균', fmtPct(buy10.avgReturn), `중앙값 ${fmtPct(buy10.median)}`, buy10.avgReturn >= 0 ? 'var(--green)' : 'var(--red)');
+  html += summaryCard('최대 수익', fmtPct(buy10.maxGain), '10일 기준', 'var(--green)');
+  html += summaryCard('최대 손실', fmtPct(buy10.maxLoss), '10일 기준', 'var(--red)');
+  html += '</div>';
+
+  // 보유기간별 비교 테이블
+  html += '<div style="font-size:12px;color:var(--muted);font-family:var(--mono);margin-bottom:8px;">📋 BUY 신호 보유기간별 성과</div>';
+  html += '<table class="detail-table"><thead><tr>';
+  html += '<th>보유기간</th><th>건수</th><th>승률</th><th>평균수익</th><th>중앙값</th><th>최대이익</th><th>최대손실</th>';
+  html += '</tr></thead><tbody>';
+  for(const hold of [5, 10, 20]) {
+    const d = result[hold].buy;
+    html += `<tr>
+      <td>${hold}일</td>
+      <td>${d.count}</td>
+      <td class="${d.winRate>=55?'c-green':d.winRate<45?'c-red':'c-yellow'}">${fmtPctClean(d.winRate)}</td>
+      <td class="${d.avgReturn>=0?'c-green':'c-red'}">${fmtPct(d.avgReturn)}</td>
+      <td class="${d.median>=0?'c-green':'c-red'}">${fmtPct(d.median)}</td>
+      <td class="c-green">${fmtPct(d.maxGain)}</td>
+      <td class="c-red">${fmtPct(d.maxLoss)}</td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+
+  // SELL 신호 테이블
+  if(result.sellCount > 0) {
+    html += '<div style="font-size:12px;color:var(--muted);font-family:var(--mono);margin:12px 0 8px;">📋 SELL 신호 보유기간별 성과 (하락 시 수익)</div>';
+    html += '<table class="detail-table"><thead><tr>';
+    html += '<th>보유기간</th><th>건수</th><th>하락률</th><th>평균</th><th>최대하락</th>';
+    html += '</tr></thead><tbody>';
+    for(const hold of [5, 10, 20]) {
+      const d = result[hold].sell;
+      html += `<tr>
+        <td>${hold}일</td>
+        <td>${d.count}</td>
+        <td class="${d.winRate>=50?'c-green':'c-red'}">${fmtPctClean(100-d.winRate)}</td>
+        <td class="${d.avgReturn<=0?'c-green':'c-red'}">${fmtPct(d.avgReturn)}</td>
+        <td class="c-red">${fmtPct(d.maxLoss)}</td>
+      </tr>`;
+    }
+    html += '</tbody></table>';
+  }
+
+  // 수익률 분포 차트
+  html += renderDistribution(result.signals, 10);
+
+  // 개별 신호 로그
+  html += renderSignalLog(result.signals);
+
+  return html;
+}
+
+function summaryCard(label, value, sub, color) {
+  return `<div class="summary-card">
+    <div class="label">${label}</div>
+    <div class="value" style="${color?'color:'+color:''}">${value}</div>
+    ${sub ? `<div class="sub">${sub}</div>` : ''}
+  </div>`;
+}
+
+function fmtPctClean(n) {
+  return !isFinite(n) ? '-' : n.toFixed(1) + '%';
+}
+
+function renderDistribution(signals, holdDays) {
+  const bins = calcDistribution(signals, holdDays);
+  const maxCount = Math.max(...bins.map(b => b.count), 1);
+
+  let html = `<div class="chart-area">
+    <div class="chart-title">📊 BUY 신호 ${holdDays}일 후 수익률 분포</div>`;
+  for(const bin of bins) {
+    const pct = (bin.count / maxCount) * 100;
+    const color = bin.max <= 0 ? 'var(--red)' : 'var(--green)';
+    html += `<div class="dist-bar-wrap">
+      <span class="dist-label">${bin.label}</span>
+      <div class="dist-bar" style="width:${Math.max(pct, 2)}%;background:${color};"></div>
+      <span class="dist-count">${bin.count}</span>
+    </div>`;
+  }
+  html += '</div>';
+  return html;
+}
+
+function renderSignalLog(signals) {
+  if(signals.length === 0) return '';
+  const buySignals = signals.filter(s => s.action === 'BUY').slice(-50).reverse();
+  if(buySignals.length === 0) return '';
+
+  let html = `<div class="signal-log">
+    <div class="signal-log-toggle" onclick="toggleLog()">▸ 최근 BUY 신호 상세 (${buySignals.length}건) — 클릭하여 펼치기</div>
+    <div id="signalLogBody" style="display:none;max-height:300px;overflow-y:auto;">
+    <div class="log-item header">
+      <span>날짜</span><span>점수</span><span>5일</span><span>10일</span><span>20일</span><span>RSI</span>
+    </div>`;
+  for(const s of buySignals) {
+    const r5 = s.returns[5], r10 = s.returns[10], r20 = s.returns[20];
+    html += `<div class="log-item">
+      <span>${fmtDateFull(s.date)}</span>
+      <span class="c-cyan">${s.score}</span>
+      <span class="${r5!==null?(r5>=0?'c-green':'c-red'):'c-muted'}">${r5!==null?fmtPct(r5):'-'}</span>
+      <span class="${r10!==null?(r10>=0?'c-green':'c-red'):'c-muted'}">${r10!==null?fmtPct(r10):'-'}</span>
+      <span class="${r20!==null?(r20>=0?'c-green':'c-red'):'c-muted'}">${r20!==null?fmtPct(r20):'-'}</span>
+      <span class="c-muted">${s.rsi?.toFixed(0)||'-'}</span>
+    </div>`;
+  }
+  html += '</div></div>';
+  return html;
+}
+
+function toggleLog() {
+  const body = document.getElementById('signalLogBody');
+  const toggle = body.previousElementSibling;
+  if(body.style.display === 'none') {
+    body.style.display = 'block';
+    toggle.textContent = toggle.textContent.replace('▸', '▾').replace('펼치기', '접기');
+  } else {
+    body.style.display = 'none';
+    toggle.textContent = toggle.textContent.replace('▾', '▸').replace('접기', '펼치기');
+  }
+}
+
+// ── 3모드 비교 렌더링 ────────────────────────────────
+function renderCompareResult(results, symbol) {
+  let html = `<div style="font-size:13px;font-weight:700;margin-bottom:12px;font-family:var(--mono);color:var(--gold);">
+    📊 ${esc(symbol)} — 3모드 비교 (BUY_TH:${_buyTh})
+  </div>`;
+  html += '<div class="compare-grid">';
+  for(const [mode, label, color] of [
+    ['aggressive', '🔥 공격적', 'var(--red)'],
+    ['swing', '⚖️ 스윙', 'var(--gold)'],
+    ['conservative', '🛡️ 보수적', 'var(--cyan)'],
+  ]) {
+    const r = results[mode];
+    const b10 = r[10].buy;
+    html += `<div class="compare-card">
+      <div class="mode-title" style="color:${color}">${label}</div>`;
+    html += statRow('BUY 신호', r.buyCount + '회');
+    html += statRow('10일 승률', fmtPctClean(b10.winRate), b10.winRate >= 55 ? 'var(--green)' : b10.winRate < 45 ? 'var(--red)' : 'var(--yellow)');
+    html += statRow('10일 평균', fmtPct(b10.avgReturn), b10.avgReturn >= 0 ? 'var(--green)' : 'var(--red)');
+    html += statRow('중앙값', fmtPct(b10.median), b10.median >= 0 ? 'var(--green)' : 'var(--red)');
+    html += statRow('최대 수익', fmtPct(b10.maxGain), 'var(--green)');
+    html += statRow('최대 손실', fmtPct(b10.maxLoss), 'var(--red)');
+    for(const hold of [5, 20]) {
+      const d = r[hold].buy;
+      html += statRow(`${hold}일 승률`, fmtPctClean(d.winRate), d.winRate >= 55 ? 'var(--green)' : d.winRate < 45 ? 'var(--red)' : 'var(--yellow)');
+      html += statRow(`${hold}일 평균`, fmtPct(d.avgReturn), d.avgReturn >= 0 ? 'var(--green)' : 'var(--red)');
+    }
+    html += '</div>';
+  }
+  html += '</div>';
+
+  // 종합 분석
+  const modes = Object.entries(results);
+  const best10 = [...modes].sort((a,b) => b[1][10].buy.avgReturn - a[1][10].buy.avgReturn)[0];
+  const bestWR = [...modes].sort((a,b) => b[1][10].buy.winRate - a[1][10].buy.winRate)[0];
+
+  html += `<div class="chart-area">
+    <div class="chart-title">📋 종합 분석</div>
+    <div style="font-size:12px;font-family:var(--mono);line-height:1.8;">
+      <div>• 10일 평균수익 최고: <span class="c-gold">${SCORING_MODES[best10[0]].label}</span> (${fmtPct(best10[1][10].buy.avgReturn)})</div>
+      <div>• 10일 승률 최고: <span class="c-gold">${SCORING_MODES[bestWR[0]].label}</span> (${fmtPctClean(bestWR[1][10].buy.winRate)})</div>
+    </div>
+  </div>`;
+
+  return html;
+}
+
+function statRow(label, value, color) {
+  return `<div class="stat-row">
+    <span class="stat-label">${label}</span>
+    <span style="${color?'color:'+color:''}">${value}</span>
+  </div>`;
+}
+
+// ── 메인 실행 ────────────────────────────────────────
+async function runBacktest() {
+  if(_running) return;
+  _running = true;
+
+  const btn = document.getElementById('btnRun');
+  const progressWrap = document.getElementById('progressWrap');
+  const progressFill = document.getElementById('progressFill');
+  const progressText = document.getElementById('progressText');
+  const resultContent = document.getElementById('resultContent');
+  const emptyState = document.getElementById('emptyState');
+
+  btn.disabled = true;
+  emptyState.style.display = 'none';
+  progressWrap.style.display = 'block';
+  resultContent.innerHTML = '';
+
+  const symbol = document.getElementById('symbolInput').value.trim();
+  const tf = document.getElementById('tfSelect').value;
+  const winSize = parseInt(document.getElementById('windowInput').value) || 100;
+  _buyTh = parseInt(document.getElementById('buyThInput').value) || 62;
+  _sellTh = parseInt(document.getElementById('sellThInput').value) || 38;
+  const isCompare = document.getElementById('compareMode').checked;
+
+  if(!symbol) {
+    toast('종목을 입력해주세요');
+    btn.disabled = false; _running = false;
+    progressWrap.style.display = 'none';
+    return;
+  }
+
+  const onProgress = (pct, text) => {
+    progressFill.style.width = pct + '%';
+    progressText.textContent = text;
+  };
+
+  try {
+    // 1. 데이터 가져오기
+    onProgress(0, '캔들 데이터 로드 중...');
+    const allRows = await fetchCandles(symbol, tf, 1000);
+    onProgress(5, `${allRows.length}봉 로드 완료. 시뮬레이션 시작...`);
+    toast(`${allRows.length}봉 로드 완료`);
+
+    if(isCompare) {
+      // 3모드 비교
+      const results = {};
+      const modes = ['aggressive', 'swing', 'conservative'];
+      for(let mi = 0; mi < modes.length; mi++) {
+        _scoringMode = modes[mi];
+        // volCache 초기화 (모드 간 오염 방지)
+        for(const k in _btVolCache) delete _btVolCache[k];
+        onProgress(5 + mi * 30, `${SCORING_MODES[modes[mi]].short} 모드 분석 중...`);
+        const signals = await simulateBacktest(allRows, winSize, (p, t) => {
+          onProgress(5 + mi * 30 + Math.round(p * 0.28), `${SCORING_MODES[modes[mi]].short}: ${t}`);
+        });
+        results[modes[mi]] = analyzeResults(signals);
+      }
+      // 원래 모드 복원
+      _scoringMode = document.querySelector('#modeGroup .chip.active')?.dataset.val || 'swing';
+      onProgress(100, '완료!');
+      resultContent.innerHTML = renderCompareResult(results, symbol);
+    } else {
+      // 단일 모드 — volCache 초기화
+      for(const k in _btVolCache) delete _btVolCache[k];
+      const signals = await simulateBacktest(allRows, winSize, onProgress);
+      onProgress(100, '완료!');
+      const result = analyzeResults(signals);
+      resultContent.innerHTML = renderSingleResult(result, symbol);
+    }
+
+    toast('백테스트 완료!');
+  } catch(e) {
+    console.error(e);
+    resultContent.innerHTML = `<div class="empty-state">
+      <div class="icon">⚠️</div>
+      <div class="title">오류 발생</div>
+      <div class="desc" style="color:var(--red);">${esc(e.message)}</div>
+    </div>`;
+    toast('오류: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    _running = false;
+    progressWrap.style.display = 'none';
+  }
+}
+</script>
+</body>
+</html>
